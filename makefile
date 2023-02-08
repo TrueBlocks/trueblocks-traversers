@@ -1,7 +1,10 @@
 all:
 	@echo building...
 	@go mod tidy
-	@go build -o /Users/jrush/source/accounting main.go
+	@go build -o ./bin/accounting main.go
 
 test:
 	@go test ./...
+
+data:
+	@cd clients ; make data

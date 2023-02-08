@@ -1,8 +1,9 @@
 package stats
 
 import (
-	"accounting/pkg/traverser"
 	"os"
+
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
 func GetTraversers(opts traverser.Options) []traverser.Traverser[float64] {

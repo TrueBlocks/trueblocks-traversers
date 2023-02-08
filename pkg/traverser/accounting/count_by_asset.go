@@ -1,14 +1,14 @@
 package accounting
 
 import (
-	"accounting/pkg/mytypes"
-	"accounting/pkg/traverser"
 	"fmt"
 	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
 // --------------------------------

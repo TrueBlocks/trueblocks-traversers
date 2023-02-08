@@ -1,11 +1,11 @@
 package stats
 
 import (
-	"accounting/pkg/traverser"
 	"fmt"
 	"reflect"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
 // --------------------------------

@@ -1,9 +1,6 @@
 package accounting
 
 import (
-	"accounting/pkg/mytypes"
-	"accounting/pkg/traverser"
-	"accounting/pkg/utils"
 	"math/big"
 	"os"
 	"strings"
@@ -15,6 +12,9 @@ import (
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/names"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/utils"
 	"github.com/ethereum/go-ethereum/common"
 )
 

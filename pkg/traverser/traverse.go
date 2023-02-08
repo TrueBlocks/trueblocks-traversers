@@ -1,7 +1,6 @@
 package traverser
 
 import (
-	"accounting/pkg/mytypes"
 	"bufio"
 	"log"
 	"os"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/names"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
 	"github.com/ethereum/go-ethereum/common"
 )
 

@@ -1,10 +1,11 @@
 package logs
 
 import (
-	"accounting/pkg/mytypes"
-	"accounting/pkg/traverser"
 	"fmt"
 	"os"
+
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
 func GetTraversers(opts traverser.Options) []traverser.Traverser[*mytypes.RawLog] {

@@ -1,12 +1,12 @@
 package accounting
 
 import (
-	"accounting/pkg/mytypes"
-	"accounting/pkg/traverser"
 	"fmt"
 	"reflect"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
 // --------------------------------
@@ -16,7 +16,7 @@ type SqlWriter struct {
 }
 
 func (c *SqlWriter) Traverse(r *mytypes.RawReconciliation) {
-	SendToSQL(connection, r)
+	// SendToSQL(connection, r)
 }
 
 func (c *SqlWriter) GetKey(r *mytypes.RawReconciliation) string {

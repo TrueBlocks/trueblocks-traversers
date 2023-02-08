@@ -1,11 +1,6 @@
 package main
 
 import (
-	"accounting/pkg/mytypes"
-	"accounting/pkg/traverser"
-	"accounting/pkg/traverser/accounting"
-	"accounting/pkg/traverser/logs"
-	"accounting/pkg/traverser/stats"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -17,6 +12,11 @@ import (
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/logger"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser/accounting"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser/logs"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser/stats"
 
 	"github.com/gocarina/gocsv"
 )

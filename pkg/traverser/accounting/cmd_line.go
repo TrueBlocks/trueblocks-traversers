@@ -1,11 +1,12 @@
 package accounting
 
 import (
-	"accounting/pkg/mytypes"
-	"accounting/pkg/traverser"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
 func GetTraversers(opts traverser.Options) []traverser.Traverser[*mytypes.RawReconciliation] {

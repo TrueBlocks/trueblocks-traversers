@@ -1,9 +1,6 @@
 package accounting
 
 import (
-	"accounting/pkg/mytypes"
-	"accounting/pkg/traverser"
-	"accounting/pkg/utils"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -11,6 +8,9 @@ import (
 	"strings"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/utils"
 )
 
 // --------------------------------

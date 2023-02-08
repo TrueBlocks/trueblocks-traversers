@@ -1,10 +1,6 @@
 package accounting
 
 import (
-	"accounting/pkg/excel"
-	"accounting/pkg/mytypes"
-	"accounting/pkg/traverser"
-	"accounting/pkg/utils"
 	"fmt"
 	"log"
 	"math/big"
@@ -14,6 +10,10 @@ import (
 	"time"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/excel"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
+	"github.com/TrueBlocks/trueblocks-traversers/pkg/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/xuri/excelize/v2"
 )
