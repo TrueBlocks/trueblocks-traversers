@@ -58,7 +58,9 @@ func GetOptions(addressFn string) Options {
 				name.Tags = parts[0]
 				name.Address = parts[1]
 				name.Name = parts[2]
-				name.IsCustom = true
+				if name.Tags < "20" {
+					name.IsCustom = true
+				}
 				ret.Names[common.HexToAddress(name.Address)] = name
 				// log.Println(len(ret.Names), name)
 				// log.Println()
