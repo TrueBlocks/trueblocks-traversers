@@ -5,6 +5,7 @@ echo "--------------------------------------------------------------------------
 echo "Processing $1..."
 
 # chifra monitors --decache $1
+# exit
 
 chifra export --fmt csv --articulate --cache $1 >raw/txs/$1.csv
 wc raw/txs/$1.csv
