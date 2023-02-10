@@ -33,7 +33,7 @@ data:
 
 excel:
 	@echo "Creating spreadsheet..."
-	@../../bin/accounting excel ; mv Book1.xlsx output/trueblocks-wallet.xlsx
+	@../../bin/accounting excel ; mv Book1.xlsx output/trueblocks-wallets.xlsx
 
 clean:
 	@rm -fR output raw summary

@@ -299,7 +299,7 @@ func (c *ProfitAndLoss) ReportHeader(verbose int, r *mytypes.RawReconciliation) 
 			"type",
 			"blockNumber",
 			"transactionIndex",
-			"logindex",
+			"logIndex",
 			"transactionHash",
 			"date",
 			"accountedFor",

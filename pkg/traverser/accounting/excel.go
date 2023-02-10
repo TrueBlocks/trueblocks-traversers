@@ -49,6 +49,7 @@ type AssetSheet struct {
 }
 
 type Field struct {
+	Order  int
 	Column string
 	Wid    float64
 	Format string
@@ -63,59 +64,57 @@ func (c *Excel) Result() string {
 		panic(err)
 	}
 
-	// FIELD_ORDER
-	var fields = []string{
-		"Type",
-		"Bn",
-		"TxId",
-		"Year",
-		"Month",
-		"Date",
-		"PrevUsd",
-		"ChangeUsd",
-		"BegUsd",
-		"NetUsd",
-		"EndUsd",
-		"Spot",
-		"Source",
-		"BegUnits",
-		"NetUnits",
-		"EndUnits",
-		"BegBal",
-		"AmountNet",
-		"EndBal",
-		"Check",
-		"Message",
-		"Sender",
-		"Recipient",
-		"AccountedFor",
+	var fieldMap = map[string]*Field{
+		"Type":            {1, "A", 6, "string", cellStyle},
+		"Bn":              {2, "B", 12, "int", intStyle},
+		"TxId":            {3, "C", 7, "int", intStyle},
+		"LogId":           {4, "D", 7, "int", intStyle},
+		"Year":            {5, "E", 8, "date", yearStyle},
+		"Month":           {6, "F", 10, "date", monthStyle},
+		"Date":            {7, "G", 0, "date", dateStyle},
+		"PrevUsd":         {8, "H", 15, "float2", float2Style},
+		"ChangeUsd":       {9, "I", 15, "float2", float2Style},
+		"BegUsd":          {10, "J", 15, "float2", float2Style},
+		"InUsd":           {11, "K", 15, "float2", float2Style},
+		"OutUsd":          {12, "L", 15, "float2", float2Style},
+		"GasUsd":          {13, "M", 15, "float2", float2Style},
+		"EndUsd":          {14, "N", 15, "float2", float2Style},
+		"Spot":            {15, "O", 15, "float2", float2Style},
+		"Source":          {16, "P", 15, "string", cellStyle},
+		"BegUnits":        {17, "Q", 18, "float5", float5Style},
+		"InUnits":         {18, "R", 18, "float5", float5Style},
+		"OutUnits":        {19, "S", 18, "float5", float5Style},
+		"GasUnits":        {20, "T", 18, "float5", float5Style},
+		"EndUnits":        {21, "U", 18, "float5", float5Style},
+		"BegBal":          {22, "V", 0, "big", bigStyle},
+		"Inflow":          {23, "W", 0, "big", bigStyle},
+		"Outflow":         {24, "X", 0, "big", bigStyle},
+		"GasOut":          {25, "Y", 0, "big", bigStyle},
+		"EndBal":          {26, "Z", 0, "big", bigStyle},
+		"Check":           {27, "AA", 10, "string", boolStyle},
+		"Message":         {28, "AB", 20, "string", cellStyle},
+		"ReconType":       {29, "AC", 0, "string", cellStyle},
+		"Sender":          {30, "AD", 52, "address", addrStyle1},
+		"Recipient":       {31, "AE", 52, "address", addrStyle1},
+		"AccountedFor":    {32, "AF", 0, "address", addrStyle1},
+		"TransactionHash": {33, "AG", 0, "hash", addrStyle1},
 	}
 
-	var fieldMap = map[string]*Field{
-		"Type":         {"A", 5, "string", cellStyle},
-		"Bn":           {"B", 12, "int", intStyle},
-		"TxId":         {"C", 8, "int", intStyle},
-		"Year":         {"D", 12, "date", yearStyle},
-		"Month":        {"E", 12, "date", monthStyle},
-		"Date":         {"F", 0, "date", dateStyle},
-		"PrevUsd":      {"G", 18, "float2", float2Style},
-		"ChangeUsd":    {"H", 18, "float2", float2Style},
-		"BegUsd":       {"I", 18, "float2", float2Style},
-		"NetUsd":       {"J", 18, "float2", float2Style},
-		"EndUsd":       {"K", 18, "float2", float2Style},
-		"Spot":         {"L", 18, "float2", float2Style},
-		"Source":       {"M", 10, "string", cellStyle},
-		"BegUnits":     {"N", 18, "float5", float5Style},
-		"NetUnits":     {"O", 18, "float5", float5Style},
-		"EndUnits":     {"P", 18, "float5", float5Style},
-		"BegBal":       {"Q", 0, "big", bigStyle},
-		"AmountNet":    {"R", 0, "big", bigStyle},
-		"EndBal":       {"S", 0, "big", bigStyle},
-		"Check":        {"T", 15, "string", boolStyle},
-		"Message":      {"U", 25, "string", cellStyle},
-		"Sender":       {"V", 52, "address", addrStyle1},
-		"Recipient":    {"W", 52, "address", addrStyle1},
-		"AccountedFor": {"X", 0, "address", addrStyle1},
+	type sorter struct {
+		Order int
+		Name  string
+	}
+
+	sortedFields := []sorter{}
+	for k, v := range fieldMap {
+		sortedFields = append(sortedFields, sorter{Order: v.Order, Name: k})
+	}
+	sort.Slice(sortedFields, func(i, j int) bool {
+		return sortedFields[i].Order < sortedFields[j].Order
+	})
+	fields := []string{}
+	for _, v := range sortedFields {
+		fields = append(fields, v.Name)
 	}
 
 	sheets := c.ConvertToSheets()
@@ -130,6 +129,7 @@ func (c *Excel) Result() string {
 		prevEnd := float64(0)
 
 		c.ExcelFile.SetSheetRow(sheet.Name, fmt.Sprintf("A%d", headerRow), &fields)
+
 		for i, r := range sheet.Records {
 			sig := r.Signature
 			if sig == "" {
@@ -139,13 +139,19 @@ func (c *Excel) Result() string {
 				sig = strings.Replace(strings.Replace(parts[0], "{name:", "", -1), "}", "", -1)
 			}
 
-			var x big.Float
-			x.SetString(r.BegBal)
-			begUnits, _ := ToUnits(&x, r.Decimals).Float64()
-			x.SetString(r.AmountNet)
-			amtUnits, _ := ToUnits(&x, r.Decimals).Float64()
-			x.SetString(r.EndBal)
-			endUnits, _ := ToUnits(&x, r.Decimals).Float64()
+			toUnits := func(v string, decimals int) float64 {
+				var x big.Float
+				x.SetString(v)
+				val, _ := ToUnits(&x, r.Decimals).Float64()
+				return val
+			}
+
+			begUnits := toUnits(r.BegBal, int(r.Decimals))
+			inUnits := toUnits(r.TotalIn, int(r.Decimals))
+			outUnitsLessGas := toUnits(r.TotalOutLessGas, int(r.Decimals))
+			gasUnitsOut := toUnits(r.GasOut, int(r.Decimals))
+			endUnits := toUnits(r.EndBal, int(r.Decimals))
+
 			check := ""
 			if !r.Reconciled {
 				check = "X"
@@ -156,27 +162,36 @@ func (c *Excel) Result() string {
 			c.SetCell(sheet.Name, row, fieldMap["Type"], "Tx")
 			c.SetCell(sheet.Name, row, fieldMap["Bn"], int(r.BlockNumber))
 			c.SetCell(sheet.Name, row, fieldMap["TxId"], int(r.TransactionIndex))
+			c.SetCell(sheet.Name, row, fieldMap["LogId"], int(r.LogIndex))
 			c.SetCell(sheet.Name, row, fieldMap["Year"], r.Date.EndOfYear())
 			c.SetCell(sheet.Name, row, fieldMap["Month"], r.Date.EndOfMonth())
 			c.SetCell(sheet.Name, row, fieldMap["Date"], r.Date)
 			c.SetCell(sheet.Name, row, fieldMap["PrevUsd"], prevEnd)
 			c.SetCell(sheet.Name, row, fieldMap["ChangeUsd"], (r.SpotPrice*begUnits)-prevEnd)
 			c.SetCell(sheet.Name, row, fieldMap["BegUsd"], r.SpotPrice*begUnits)
-			c.SetCell(sheet.Name, row, fieldMap["NetUsd"], r.SpotPrice*amtUnits)
+			c.SetCell(sheet.Name, row, fieldMap["InUsd"], r.SpotPrice*inUnits)
+			c.SetCell(sheet.Name, row, fieldMap["OutUsd"], r.SpotPrice*outUnitsLessGas)
+			c.SetCell(sheet.Name, row, fieldMap["GasUsd"], r.SpotPrice*gasUnitsOut)
 			c.SetCell(sheet.Name, row, fieldMap["EndUsd"], r.SpotPrice*endUnits)
 			c.SetCell(sheet.Name, row, fieldMap["Spot"], r.SpotPrice)
 			c.SetCell(sheet.Name, row, fieldMap["Source"], r.PriceSource)
 			c.SetCell(sheet.Name, row, fieldMap["BegUnits"], begUnits)
-			c.SetCell(sheet.Name, row, fieldMap["NetUnits"], amtUnits)
+			c.SetCell(sheet.Name, row, fieldMap["InUnits"], inUnits)
+			c.SetCell(sheet.Name, row, fieldMap["OutUnits"], outUnitsLessGas)
+			c.SetCell(sheet.Name, row, fieldMap["GasUnits"], gasUnitsOut)
 			c.SetCell(sheet.Name, row, fieldMap["EndUnits"], endUnits)
+			c.SetCell(sheet.Name, row, fieldMap["BegBal"], r.BegBal)
+			c.SetCell(sheet.Name, row, fieldMap["Inflow"], r.TotalIn)
+			c.SetCell(sheet.Name, row, fieldMap["Outflow"], r.TotalOutLessGas)
+			c.SetCell(sheet.Name, row, fieldMap["GasOut"], r.GasOut)
+			c.SetCell(sheet.Name, row, fieldMap["EndBal"], r.EndBal)
 			c.SetCell(sheet.Name, row, fieldMap["Check"], check)
 			c.SetCell(sheet.Name, row, fieldMap["Message"], sig)
-			c.SetCell(sheet.Name, row, fieldMap["BegBal"], r.BegBal)
-			c.SetCell(sheet.Name, row, fieldMap["AmountNet"], r.AmountNet)
-			c.SetCell(sheet.Name, row, fieldMap["EndBal"], r.EndBal)
+			c.SetCell(sheet.Name, row, fieldMap["ReconType"], r.ReconciliationType)
 			c.SetCell(sheet.Name, row, fieldMap["Sender"], r.Sender)
 			c.SetCell(sheet.Name, row, fieldMap["Recipient"], r.Recipient)
 			c.SetCell(sheet.Name, row, fieldMap["AccountedFor"], r.AccountedFor)
+			c.SetCell(sheet.Name, row, fieldMap["TransactionHash"], r.TransactionHash)
 
 			// both or neither can be true...
 			senderCell := fmt.Sprintf("%s%d", fieldMap["Sender"].Column, row)
@@ -297,20 +312,20 @@ func (c *Excel) HeaderCell(sheetName, c1, c2, c3, c4, t, v string) (err error) {
 
 func (c *Excel) SetHeader(sheet *AssetSheet) {
 	if err := c.HeaderCell(sheet.Name, "A1", "C1", "D1", "H1", "Asset Address:", sheet.Address); err != nil {
-		log.Fatal(err) // fmt.Errorf("line %d SetHeader::HeaderCell(\"Address\", %s, %s) %w", c.Line, sheet.Name, sheet.Address, err))
+		log.Fatal(fmt.Errorf("line %d SetHeader::HeaderCell(\"Address\", %s, %s) %w", c.Line, sheet.Name, sheet.Address, err))
 	}
 	name := c.Opts.Names[common.HexToAddress(sheet.Address)].Name
 	if len(name) == 0 {
 		name = "Unnamed"
 	}
 	if err := c.HeaderCell(sheet.Name, "A2", "C2", "D2", "H2", "Asset Name:", name); err != nil {
-		log.Fatal(err) // fmt.Errorf("line %d SetHeader::HeaderCell(\"Name\", %s, %s) %w", c.Line, sheet.Name, name, err))
+		log.Fatal(fmt.Errorf("line %d SetHeader::HeaderCell(\"Name\", %s, %s) %w", c.Line, sheet.Name, name, err))
 	}
 	if err := c.HeaderCell(sheet.Name, "A3", "C3", "D3", "H3", "Asset Symbol:", sheet.Symbol); err != nil {
-		log.Fatal(err) // fmt.Errorf("line %d SetHeader::HeaderCell(\"Symbol\", %s, %s) %w", c.Line, sheet.Name, sheet.Symbol, err))
+		log.Fatal(fmt.Errorf("line %d SetHeader::HeaderCell(\"Symbol\", %s, %s) %w", c.Line, sheet.Name, sheet.Symbol, err))
 	}
 	if err := c.HeaderCell(sheet.Name, "A4", "C4", "D4", "H4", "Decimals:", fmt.Sprintf("%d", sheet.Decimals)); err != nil {
-		log.Fatal(err) // fmt.Errorf("line %d SetHeader::HeaderCell(\"Decimals\", %s, %d) %w", c.Line, sheet.Name, sheet.Decimals, err))
+		log.Fatal(fmt.Errorf("line %d SetHeader::HeaderCell(\"Decimals\", %s, %d) %w", c.Line, sheet.Name, sheet.Decimals, err))
 	}
 
 	if mainHeader, err := c.ExcelFile.NewStyle(&excelize.Style{
@@ -339,7 +354,7 @@ func (c *Excel) SetHeader(sheet *AssetSheet) {
 	}); err != nil {
 		return
 	} else {
-		c.SetStyle(sheet.Name, fmt.Sprintf("A%d", headerRow), fmt.Sprintf("X%d", headerRow), tableHeader)
+		c.SetStyle(sheet.Name, fmt.Sprintf("A%d", headerRow), fmt.Sprintf("AG%d", headerRow), tableHeader)
 	}
 }
 
@@ -431,9 +446,6 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 	if addrStyle1, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
-		},
-		Alignment: &excelize.Alignment{
-			Horizontal: "center",
 		},
 	}); err != nil {
 		return
@@ -529,6 +541,9 @@ func (c *Excel) SetCell(sheetName string, row int, field *Field, val interface{}
 		err = c.ExcelFile.SetCellValue(sheetName, cell, tt)
 	case "address":
 		a := val.(mytypes.Address)
+		err = c.ExcelFile.SetCellStr(sheetName, cell, a.String())
+	case "hash":
+		a := val.(common.Hash)
 		err = c.ExcelFile.SetCellStr(sheetName, cell, a.String())
 	case "string":
 		err = c.ExcelFile.SetCellStr(sheetName, cell, val.(string))
