@@ -18,15 +18,13 @@ wc raw/logs/$1.csv
 
 cat raw/recons/$1.csv | cut -f6 -d, | cut -f2 -d'"' | cut -f1 -d'-' | sort | uniq -c | sort -n
 
+cat raw/logs/$1.csv | grep -v "{code:-32000 message:invalid" | grep -v blockNumber >>summary/all_logs.csv
 cat raw/recons/$1.csv | \
-    sed 's/\",\"/\"@\"/g' | \
-    sed 's/\\\"//g' | \
-    tr ',' ' ' | \
-    tr ' ' '_' | \
-    tr '@' '\t' | \
-    awk '{print $7,$8,$12,$6,$1,$2,$3,$4,$15,$22,$36,$35,$16,$17,$18,$19,$10,$11,$5,$9,$13,$14,$21,$20}' | \
-    tr ' ' ',' | \
-    tr '_' ' ' | \
+    tr '`' ' ' | \
+    awk -v FS='","' -v OFS='`' '{print $7,$8,$12,$6,$1,$2,$3,$4,$15,$22,$36,$35,$16,$17,$18,$19,$10,$11,$5,$9,$13,$14,$21,$20}' | \
+    sed 's/`/\",\"/g' | \
+    sed 's/^/\"/' | \
+    sed 's/$/\"/' | \
+    sed 's/UTC\",\"\"/UTC\",\"/g' | \
+    grep -v "{code:-32" |  \
     grep -v assetAddr >>summary/all_recons.csv
-cat raw/logs/$1.csv | grep -v blockNumber >>summary/all_logs.csv
-

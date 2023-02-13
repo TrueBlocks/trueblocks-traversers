@@ -7,13 +7,13 @@ echo "Processing $1..."
 # chifra monitors --decache $1
 # exit
 
-chifra export --fmt csv --articulate --cache $1 >raw/txs/$1.csv
+chifra export --fmt csv --articulate --first_block 16422793 --last_block 16530247 --cache $1 >raw/txs/$1.csv
 wc raw/txs/$1.csv
 
-chifra export --fmt csv --articulate --accounting --statements $1 >raw/recons/$1.csv
+chifra export --fmt csv --articulate --first_block 16422793 --last_block 16530247 --accounting --statements $1 >raw/recons/$1.csv
 wc raw/recons/$1.csv
 
-chifra export --fmt csv --articulate --logs $1 >raw/logs/$1.csv
+chifra export --fmt csv --articulate --first_block 16422793 --last_block 16530247 --logs $1 >raw/logs/$1.csv
 wc raw/logs/$1.csv
 
 cat raw/recons/$1.csv | cut -f6 -d, | cut -f2 -d'"' | cut -f1 -d'-' | sort | uniq -c | sort -n

@@ -64,36 +64,42 @@ func (c *CountByContract) reportValues(msg string, m map[string]uint64) string {
 		Name     string
 		Topic    string
 		Function string
-		Count    uint64
+		Count    int64
+		Sort     string
 	}
 	nRecords := uint64(0)
+
+	sortStr := func(a, b, c, d string) string {
+		return a + "_" + b + "_" + c + "_" + d
+	}
 
 	arr := make([]stats, 0, len(m))
 	for k, v := range m {
 		nRecords += v
 		parts := strings.Split(k, "_")
+		var val stats
 		switch c.Mode {
 		case "topic_only":
-			arr = append(arr, stats{Count: v, Topic: parts[0], Function: parts[1]})
+			val = stats{Count: int64(v), Topic: parts[0], Function: parts[1]}
+			val.Sort = sortStr(val.Topic, val.Function, "", "")
 		case "contract_only":
-			arr = append(arr, stats{Count: v, Contract: parts[0], Name: parts[1]})
+			val = stats{Count: int64(v), Contract: parts[0], Name: parts[1]}
+			val.Sort = sortStr(val.Contract, val.Name, "", "")
 		case "contract_last":
-			arr = append(arr, stats{Count: v, Topic: parts[0], Function: parts[1], Contract: parts[2], Name: parts[3]})
+			val = stats{Count: int64(v), Topic: parts[0], Function: parts[1], Contract: parts[2], Name: parts[3]}
+			val.Sort = sortStr(val.Topic, val.Function, val.Contract, val.Name)
 		case "contract_first":
 			fallthrough
 		default:
-			arr = append(arr, stats{Count: v, Contract: parts[0], Name: parts[1], Topic: parts[2], Function: parts[3]})
+			val = stats{Count: int64(v), Contract: parts[0], Name: parts[1], Topic: parts[2], Function: parts[3]}
+			val.Sort = sortStr(val.Contract, val.Name, val.Topic, val.Function)
 		}
+		arr = append(arr, val)
 	}
+
 	sort.Slice(arr, func(i, j int) bool {
 		if arr[i].Count == arr[j].Count {
-			if arr[i].Topic == arr[j].Topic {
-				if arr[i].Contract == arr[j].Contract {
-					return arr[i].Function < arr[j].Function
-				}
-				return arr[i].Contract < arr[j].Contract
-			}
-			return arr[i].Topic < arr[j].Topic
+			return arr[i].Sort < arr[j].Sort
 		}
 		return arr[i].Count > arr[j].Count
 	})

@@ -286,6 +286,9 @@ func (c *Excel) ConvertToSheets() []AssetSheet {
 		if sheets[i].nRecords != sheets[j].nRecords {
 			return sheets[i].nRecords > sheets[j].nRecords
 		}
+		if sheets[i].Address != sheets[j].Address {
+			return sheets[i].Address < sheets[j].Address
+		}
 		return sheets[i].Name < sheets[j].Name
 	})
 
