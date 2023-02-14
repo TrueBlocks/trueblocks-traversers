@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/excel"
@@ -39,13 +40,16 @@ func (c *Excel) GetKey(r *mytypes.RawReconciliation) string {
 	return fmt.Sprintf("%s-%s-%d", r.AssetAddress.String(), r.AssetSymbol, r.Decimals)
 }
 
+var tableCnt = 1
+
 type AssetSheet struct {
-	Name     string
-	Address  string
-	Symbol   string
-	Decimals int
-	nRecords int
-	Records  []*mytypes.RawReconciliation
+	Name      string
+	RangeName string
+	Address   string
+	Symbol    string
+	Decimals  int
+	nRecords  int
+	Records   []*mytypes.RawReconciliation
 }
 
 type Field struct {
@@ -58,46 +62,63 @@ type Field struct {
 
 const headerRow = 6
 
+type Styles struct {
+	regular     int
+	integer     int
+	accounting1 int
+	accounting5 int
+	price       int
+	dateYear    int
+	dateMonth   int
+	date        int
+	boolean     int
+	address1    int
+	address2    int
+	address3    int
+	bigInteger  int
+	zero        int
+}
+
 func (c *Excel) Result() string {
-	cellStyle, intStyle, float2Style, float5Style, yearStyle, monthStyle, dateStyle, boolStyle, addrStyle1, addrStyle2, addrStyle3, bigStyle, zeroStyle, err := c.GetStyles()
+	styles, err := c.GetStyles()
 	if err != nil {
 		panic(err)
 	}
 
 	var fieldMap = map[string]*Field{
-		"Type":            {1, "A", 6, "string", cellStyle},
-		"Bn":              {2, "B", 12, "int", intStyle},
-		"TxId":            {3, "C", 7, "int", intStyle},
-		"LogId":           {4, "D", 7, "int", intStyle},
-		"Year":            {5, "E", 8, "date", yearStyle},
-		"Month":           {6, "F", 10, "date", monthStyle},
-		"Date":            {7, "G", 0, "date", dateStyle},
-		"PrevUsd":         {8, "H", 15, "float2", float2Style},
-		"ChangeUsd":       {9, "I", 15, "float2", float2Style},
-		"BegUsd":          {10, "J", 15, "float2", float2Style},
-		"InUsd":           {11, "K", 15, "float2", float2Style},
-		"OutUsd":          {12, "L", 15, "float2", float2Style},
-		"GasUsd":          {13, "M", 15, "float2", float2Style},
-		"EndUsd":          {14, "N", 15, "float2", float2Style},
-		"Spot":            {15, "O", 15, "float2", float2Style},
-		"Source":          {16, "P", 15, "string", cellStyle},
-		"BegUnits":        {17, "Q", 18, "float5", float5Style},
-		"InUnits":         {18, "R", 18, "float5", float5Style},
-		"OutUnits":        {19, "S", 18, "float5", float5Style},
-		"GasUnits":        {20, "T", 18, "float5", float5Style},
-		"EndUnits":        {21, "U", 18, "float5", float5Style},
-		"BegBal":          {22, "V", 0, "big", bigStyle},
-		"Inflow":          {23, "W", 0, "big", bigStyle},
-		"Outflow":         {24, "X", 0, "big", bigStyle},
-		"GasOut":          {25, "Y", 0, "big", bigStyle},
-		"EndBal":          {26, "Z", 0, "big", bigStyle},
-		"Check":           {27, "AA", 10, "string", boolStyle},
-		"Message":         {28, "AB", 20, "string", cellStyle},
-		"ReconType":       {29, "AC", 0, "string", cellStyle},
-		"Sender":          {30, "AD", 52, "address", addrStyle1},
-		"Recipient":       {31, "AE", 52, "address", addrStyle1},
-		"AccountedFor":    {32, "AF", 0, "address", addrStyle1},
-		"TransactionHash": {33, "AG", 0, "hash", addrStyle1},
+		"Type":            {1, "A", 6, "string", styles.regular},
+		"Bn":              {2, "B", 12, "int", styles.integer},
+		"TxId":            {3, "C", 7, "int", styles.integer},
+		"LogId":           {4, "D", 7, "int", styles.integer},
+		"Year":            {5, "E", 8, "date", styles.dateYear},
+		"Month":           {6, "F", 10, "date", styles.dateMonth},
+		"Date":            {7, "G", 0, "date", styles.date},
+		"PrevUsd":         {8, "H", 15, "float2", styles.accounting1},
+		"ChangeUsd":       {9, "I", 15, "float2", styles.accounting1},
+		"BegUsd":          {10, "J", 15, "float2", styles.accounting1},
+		"InUsd":           {11, "K", 15, "float2", styles.accounting1},
+		"OutUsd":          {12, "L", 15, "float2", styles.accounting1},
+		"GasUsd":          {13, "M", 15, "float2", styles.accounting1},
+		"EndUsd":          {14, "N", 15, "float2", styles.accounting1},
+		"Spot":            {15, "O", 15, "float2", styles.price},
+		"Source":          {16, "P", 15, "string", styles.regular},
+		"BegUnits":        {17, "Q", 18, "float5", styles.accounting5},
+		"InUnits":         {18, "R", 18, "float5", styles.accounting5},
+		"OutUnits":        {19, "S", 18, "float5", styles.accounting5},
+		"GasUnits":        {20, "T", 18, "float5", styles.accounting5},
+		"EndUnits":        {21, "U", 18, "float5", styles.accounting5},
+		"BegBal":          {22, "V", 0, "big", styles.bigInteger},
+		"Inflow":          {23, "W", 0, "big", styles.bigInteger},
+		"Outflow":         {24, "X", 0, "big", styles.bigInteger},
+		"GasOut":          {25, "Y", 0, "big", styles.bigInteger},
+		"EndBal":          {26, "Z", 0, "big", styles.bigInteger},
+		"Check":           {27, "AA", 10, "string", styles.boolean},
+		"Message":         {28, "AB", 20, "string", styles.regular},
+		"ReconType":       {29, "AC", 0, "string", styles.regular},
+		"Sender":          {30, "AD", 52, "address", styles.address1},
+		"Recipient":       {31, "AE", 52, "address", styles.address1},
+		"AccountedFor":    {32, "AF", 0, "address", styles.address1},
+		"TransactionHash": {33, "AG", 0, "hash", styles.address1},
 	}
 
 	type sorter struct {
@@ -196,28 +217,28 @@ func (c *Excel) Result() string {
 			// both or neither can be true...
 			senderCell := fmt.Sprintf("%s%d", fieldMap["Sender"].Column, row)
 			if r.Sender.IsZero() {
-				c.SetStyle(sheet.Name, senderCell, senderCell, zeroStyle)
+				c.SetStyle(sheet.Name, senderCell, senderCell, styles.zero)
 			} else {
-				style := addrStyle1
+				style := styles.address1
 				if c.Opts.Names[common.HexToAddress(r.Sender.String())].IsCustom {
-					style = addrStyle3
+					style = styles.address3
 				}
 				if r.Sender == r.AccountedFor {
-					style = addrStyle2
+					style = styles.address2
 				}
 				c.SetStyle(sheet.Name, senderCell, senderCell, style)
 			}
 
 			recipCell := fmt.Sprintf("%s%d", fieldMap["Recipient"].Column, row)
 			if r.Recipient.IsZero() {
-				c.SetStyle(sheet.Name, recipCell, recipCell, zeroStyle)
+				c.SetStyle(sheet.Name, recipCell, recipCell, styles.zero)
 			} else {
-				style := addrStyle1
+				style := styles.address1
 				if c.Opts.Names[common.HexToAddress(r.Recipient.String())].IsCustom {
-					style = addrStyle3
+					style = styles.address3
 				}
 				if r.Recipient == r.AccountedFor {
-					style = addrStyle2
+					style = styles.address2
 				}
 				c.SetStyle(sheet.Name, recipCell, recipCell, style)
 			}
@@ -237,13 +258,21 @@ func (c *Excel) Result() string {
 			c.SetStyle(sheet.Name, cell1, cell2, style)
 		}
 
-		// err = c.ExcelFile.AddTable(sheet.Name, "A1:"+last, &excelize.TableOptions{
-		// 	Name:      sheet.Name,
-		// 	StyleName: "TableStyleMedium2",
-		// })
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
+		tableCnt++
+		showStripes := true
+		cellRange := fmt.Sprintf("%s%d:%s%d", fieldMap[fields[0]].Column, headerRow, fieldMap[fields[len(fields)-1]].Column, bottomRow)
+		err = c.ExcelFile.AddTable(sheet.Name, cellRange, &excelize.TableOptions{
+			// Name:              fmt.Sprintf("t_%d", tableCnt-1), // sheet.RangeName,
+			Name:              sheet.RangeName,
+			StyleName:         "TableStyleMedium2",
+			ShowFirstColumn:   true,
+			ShowLastColumn:    false,
+			ShowRowStripes:    &showStripes,
+			ShowColumnStripes: false,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	excel.WriteLicenseSheet(c.ExcelFile)
@@ -263,25 +292,29 @@ func (c *Excel) reportValue(msg string, v uint64) string {
 func (c *Excel) ConvertToSheets() []AssetSheet {
 	sheets := make([]AssetSheet, 0, len(c.Assets))
 	for _, asset := range c.Assets {
-		// if len(asset) < 10 || asset[0].AssetSymbol != "WEI" {
-		// 	continue
-		// }
-		sheetName := asset[0].AssetSymbol
-		if len(sheetName) == 0 {
-			sheetName = asset[0].AssetAddress.String()
+		sheetName := asset[0].AssetAddress.String()[:8]
+		if !strings.HasPrefix(asset[0].AssetSymbol, "0x") {
+			sym := strings.ReplaceAll(asset[0].AssetSymbol, " ", "_")
+			if len(sym) > 10 {
+				sym = sym[:10]
+			}
+			sheetName = sym + "_" + sheetName
+		} else {
+			sheetName = asset[0].AssetAddress.String()[:12]
 		}
-		if len(sheetName) > 10 {
-			sheetName = sheetName[:10]
-		}
-		sheets = append(sheets, AssetSheet{
+		sheetName += "_" + fmt.Sprintf("%d", len(asset))
+		addr := asset[0].AssetAddress
+		s := AssetSheet{
 			Name:     sheetName + fmt.Sprintf(" (%d)", len(asset)),
-			Address:  asset[0].AssetAddress.String(),
+			Address:  addr.String(),
 			Symbol:   asset[0].AssetSymbol,
 			Decimals: int(asset[0].Decimals),
 			nRecords: len(asset),
 			Records:  asset,
-		})
+		}
+		sheets = append(sheets, s)
 	}
+
 	sort.Slice(sheets, func(i, j int) bool {
 		if sheets[i].nRecords != sheets[j].nRecords {
 			return sheets[i].nRecords > sheets[j].nRecords
@@ -292,13 +325,32 @@ func (c *Excel) ConvertToSheets() []AssetSheet {
 		return sheets[i].Name < sheets[j].Name
 	})
 
+	cleanup := func(s string) string {
+		for _, ch := range s {
+			if !unicode.IsLetter(ch) && !unicode.IsNumber(ch) {
+				s = strings.ReplaceAll(s, string(ch), "")
+			}
+		}
+		return s
+	}
+
+	for i := 0; i < len(sheets); i++ {
+		records := sheets[i].Records[0]
+		if !strings.HasPrefix(records.AssetSymbol, "0x") {
+			sheets[i].RangeName = "t_" + cleanup(records.AssetSymbol) + "_" + records.AssetAddress.String()[:8]
+		} else {
+			sheets[i].RangeName = "t_" + records.AssetAddress.String()[:12]
+		}
+		// fmt.Println(sheets[i].RangeName)
+	}
+
 	return sheets
 }
 
 func (c *Excel) SetStyle(sheetName, topLeft, bottomRight string, styleId int) {
 	err := c.ExcelFile.SetCellStyle(sheetName, topLeft, bottomRight, styleId)
 	if err != nil {
-		log.Fatal(fmt.Errorf("error SetStyle::SetCellStyle(%s, %s, %s, %d) %w", sheetName, topLeft, bottomRight, styleId, err))
+		log.Fatal(fmt.Errorf("error SetStyle::Setregular(%s, %s, %s, %d) %w", sheetName, topLeft, bottomRight, styleId, err))
 	}
 }
 
@@ -361,8 +413,8 @@ func (c *Excel) SetHeader(sheet *AssetSheet) {
 	}
 }
 
-func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, yearStyle, monthStyle, dateStyle, boolStyle, addrStyle1, addrStyle2, addrStyle3, bigStyle, zeroStyle int, err error) {
-	if cellStyle, err = c.ExcelFile.NewStyle(&excelize.Style{
+func (c *Excel) GetStyles() (styles Styles, err error) {
+	if styles.regular, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
 		},
@@ -370,7 +422,7 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 		return
 	}
 
-	if intStyle, err = c.ExcelFile.NewStyle(&excelize.Style{
+	if styles.integer, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
 			Color:  "#FF0000",
@@ -379,8 +431,8 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 		return
 	}
 
-	bh1 := "#,##0.00"
-	if float2Style, err = c.ExcelFile.NewStyle(&excelize.Style{
+	bh1 := "_(* #,##0.00_);_(* (#,##0.00);_(* \"-\"??_);_(@_)"
+	if styles.accounting1, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
 			Color:  "#AA00AA",
@@ -390,8 +442,8 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 		return
 	}
 
-	bh := "#,##0.00000"
-	if float5Style, err = c.ExcelFile.NewStyle(&excelize.Style{
+	bh := "_(* #,##0.00000_);_(* (#,##0.000000);_(* \"-\"??_);_(@_)"
+	if styles.accounting5, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
 			Color:  "#4444ff",
@@ -401,8 +453,19 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 		return
 	}
 
+	bh3 := "#,##0.00_);(#,##0.00)"
+	if styles.price, err = c.ExcelFile.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "Andale Mono",
+			Color:  "#AA00AA",
+		},
+		CustomNumFmt: &bh3,
+	}); err != nil {
+		return
+	}
+
 	year := "YYYY"
-	if yearStyle, err = c.ExcelFile.NewStyle(&excelize.Style{
+	if styles.dateYear, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 
 			Family: "Andale Mono",
@@ -414,7 +477,7 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 	}
 
 	month := "YYYY-mm"
-	if monthStyle, err = c.ExcelFile.NewStyle(&excelize.Style{
+	if styles.dateMonth, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 
 			Family: "Andale Mono",
@@ -426,7 +489,7 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 	}
 
 	date := "mm/dd/yyyy hh:mm:ss"
-	if dateStyle, err = c.ExcelFile.NewStyle(&excelize.Style{
+	if styles.date, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
 			Color:  "#0000FF",
@@ -436,7 +499,7 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 		return
 	}
 
-	if boolStyle, err = c.ExcelFile.NewStyle(&excelize.Style{
+	if styles.boolean, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
 			Color:  "#FF0000",
@@ -446,7 +509,7 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 		return
 	}
 
-	if addrStyle1, err = c.ExcelFile.NewStyle(&excelize.Style{
+	if styles.address1, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
 		},
@@ -454,7 +517,7 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 		return
 	}
 
-	if addrStyle2, err = c.ExcelFile.NewStyle(&excelize.Style{
+	if styles.address2, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
 			Color:  "#FFFFFF",
@@ -471,7 +534,7 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 		return
 	}
 
-	if addrStyle3, err = c.ExcelFile.NewStyle(&excelize.Style{
+	if styles.address3, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
 			Color:  "#FFFFFF",
@@ -488,7 +551,7 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 		return
 	}
 
-	if bigStyle, err = c.ExcelFile.NewStyle(&excelize.Style{
+	if styles.bigInteger, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
 			Color:  "#FFFF00",
@@ -503,7 +566,7 @@ func (c *Excel) GetStyles() (cellStyle, intStyle, float2Style, float5Style, year
 		return
 	}
 
-	if zeroStyle, err = c.ExcelFile.NewStyle(&excelize.Style{
+	if styles.zero, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
 			Color:  "#888888",
