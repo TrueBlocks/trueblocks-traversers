@@ -77,6 +77,7 @@ type Styles struct {
 	address3    int
 	bigInteger  int
 	zero        int
+	link        int
 }
 
 func (c *Excel) Result() string {
@@ -369,6 +370,7 @@ func (c *Excel) SetHeader(sheet *AssetSheet) {
 	if err := c.HeaderCell(sheet.Name, "A1", "C1", "D1", "H1", "Asset Address:", sheet.Address); err != nil {
 		log.Fatal(fmt.Errorf("line %d SetHeader::HeaderCell(\"Address\", %s, %s) %w", c.Line, sheet.Name, sheet.Address, err))
 	}
+
 	name := c.Opts.Names[common.HexToAddress(sheet.Address)].Name
 	if len(name) == 0 {
 		name = "Unnamed"
@@ -394,6 +396,19 @@ func (c *Excel) SetHeader(sheet *AssetSheet) {
 		c.SetStyle(sheet.Name, fmt.Sprintf("A%d", 1), fmt.Sprintf("F%d", 4), mainHeader)
 	}
 
+	styles, err := c.GetStyles()
+	if err != nil {
+		panic(err)
+	}
+	link, tooltip := "https://etherscan.io/address/"+sheet.Address, "Open in Explorer"
+	// fmt.Println(link)
+	if err := c.ExcelFile.SetCellHyperLink(sheet.Name, "D1", link, "External", excelize.HyperlinkOpts{
+		Tooltip: &tooltip,
+	}); err != nil {
+		log.Fatal(fmt.Errorf("line %d SetHeader::SetCellHyperLink: %w", c.Line, err))
+	}
+	c.SetStyle(sheet.Name, "D1", "D1", styles.link)
+
 	if tableHeader, err := c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Bold:   true,
@@ -414,6 +429,16 @@ func (c *Excel) SetHeader(sheet *AssetSheet) {
 }
 
 func (c *Excel) GetStyles() (styles Styles, err error) {
+	if styles.link, err = c.ExcelFile.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family:    "Andale Mono",
+			Color:     "#0000FF",
+			Underline: "1",
+		},
+	}); err != nil {
+		return
+	}
+
 	if styles.regular, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "Andale Mono",
