@@ -21,7 +21,7 @@ func TestPricing(t *testing.T) {
 	}
 
 	cc, _ := c.Uint64()
-	z := pow(b, cc)
+	z := Pow(b, cc)
 	if z.Cmp(big.NewFloat(8.0)) != 0 {
 		t.Error("usd should be 8.0")
 	}

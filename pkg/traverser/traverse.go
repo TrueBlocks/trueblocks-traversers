@@ -20,11 +20,11 @@ type Traverser[T mytypes.RawType] interface {
 }
 
 type Options struct {
-	Period  string
-	Denom   string
-	Verbose int
-	Filters map[mytypes.Address]bool
-	Names   names.NamesMap
+	Period      string
+	Denom       string
+	Verbose     int
+	AddrFilters map[mytypes.Address]bool
+	Names       names.NamesMap
 }
 
 func GetOptions(addressFn string) Options {
@@ -71,9 +71,9 @@ func GetOptions(addressFn string) Options {
 
 	lines = AsciiFileToLines("/Users/jrush/Development/tokenomics/explorations/accounting-01/filter.csv")
 	if len(lines) > 0 {
-		ret.Filters = make(map[mytypes.Address]bool)
+		ret.AddrFilters = make(map[mytypes.Address]bool)
 		for _, line := range lines {
-			ret.Filters[mytypes.Address(line)] = true
+			ret.AddrFilters[mytypes.Address(line)] = true
 		}
 	}
 	log.Println(colors.Yellow+"Loaded", len(lines), "filters...", colors.Off)

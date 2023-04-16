@@ -37,7 +37,7 @@ func (c *ProfitAndLoss) Traverse(r *mytypes.RawReconciliation) {
 		c.LastKey = ""
 	}
 
-	if len(c.Opts.Filters) > 0 && !c.Opts.Filters[r.AssetAddress] {
+	if len(c.Opts.AddrFilters) > 0 && !c.Opts.AddrFilters[r.AssetAddress] {
 		return
 	}
 
@@ -151,7 +151,7 @@ func Display(color string, a mytypes.Address, aF *mytypes.Address, verbose int, 
 }
 
 func (c *ProfitAndLoss) Report(msg, color string, spot float64, r *mytypes.RawReconciliation) {
-	if len(c.Opts.Filters) > 0 && !c.Opts.Filters[r.AssetAddress] {
+	if len(c.Opts.AddrFilters) > 0 && !c.Opts.AddrFilters[r.AssetAddress] {
 		return
 	}
 
