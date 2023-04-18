@@ -30,6 +30,10 @@ func (c *Total) Name() string {
 	return colors.Green + reflect.TypeOf(c).Elem().String() + colors.Off
 }
 
+func (c *Total) Sort(array []float64) {
+	// Nothing to do
+}
+
 func (c *Total) reportValue(msg string, v float64) string {
 	return fmt.Sprintf("%s%f", msg, v)
 }

@@ -41,6 +41,10 @@ func (c *GroupByPriced) Name() string {
 	return colors.Green + reflect.TypeOf(c).Elem().String() + colors.Off
 }
 
+func (c *GroupByPriced) Sort(array []*mytypes.RawReconciliation) {
+	// Nothing to do
+}
+
 func (c *GroupByPriced) reportValues(msg string, m map[string]uint64) string {
 	type stats struct {
 		Address string

@@ -31,6 +31,10 @@ func (c *Counter) Name() string {
 	return colors.Green + reflect.TypeOf(c).Elem().String() + colors.Off
 }
 
+func (c *Counter) Sort(array []*mytypes.RawReconciliation) {
+	// Nothing to do
+}
+
 func (c *Counter) reportValue(msg string, v uint64) string {
 	return fmt.Sprintf("%s%d", msg, v)
 }

@@ -32,6 +32,10 @@ func (c *Max) Name() string {
 	return colors.Green + reflect.TypeOf(c).Elem().String() + colors.Off
 }
 
+func (c *Max) Sort(array []float64) {
+	// Nothing to do
+}
+
 func (c *Max) reportValue(msg string, v float64) string {
 	return fmt.Sprintf("%s%f", msg, v)
 }

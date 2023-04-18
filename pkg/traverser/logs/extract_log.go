@@ -37,6 +37,10 @@ func (a *ExtractLog) Name() string {
 	return colors.Green + reflect.TypeOf(a).Elem().String() + colors.Off + ": " + fmt.Sprintf("%d", a.Count)
 }
 
+func (c *ExtractLog) Sort(array []*mytypes.RawLog) {
+	// Nothing to do
+}
+
 func (c *ExtractLog) ReportHeader(verbose int, r *mytypes.RawLog) {
 	if verbose > 0 {
 		fmt.Println("Block\tTx\tLog\tAddress\tTopics\tData\t")

@@ -17,6 +17,7 @@ type Traverser[T mytypes.RawType] interface {
 	GetKey(t T) string
 	Result() string
 	Name() string
+	Sort(array []T)
 }
 
 type Options struct {
@@ -27,7 +28,7 @@ type Options struct {
 	Names       names.NamesMap
 }
 
-func GetOptions(addressFn string) Options {
+func GetOptions(addressFn, filterFn string) Options {
 	ret := Options{}
 	if len(os.Args) > 1 {
 		for i, a := range os.Args {
@@ -69,11 +70,19 @@ func GetOptions(addressFn string) Options {
 	}
 	log.Println(colors.Yellow+"Loaded", len(lines), "addresses...", colors.Off)
 
-	lines = AsciiFileToLines("/Users/jrush/Development/tokenomics/explorations/accounting-01/filter.csv")
+	lines = AsciiFileToLines(filterFn)
 	if len(lines) > 0 {
 		ret.AddrFilters = make(map[mytypes.Address]bool)
 		for _, line := range lines {
-			ret.AddrFilters[mytypes.Address(line)] = true
+			if strings.HasPrefix(line, "#") {
+				continue
+			}
+			parts := strings.Split(line, ",")
+			if len(parts) != 2 {
+				log.Fatal("Invalid filter line: ", line)
+				os.Exit(1)
+			}
+			ret.AddrFilters[mytypes.Address(parts[0])] = true
 		}
 	}
 	log.Println(colors.Yellow+"Loaded", len(lines), "filters...", colors.Off)

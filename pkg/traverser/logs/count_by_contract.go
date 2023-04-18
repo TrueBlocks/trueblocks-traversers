@@ -58,6 +58,10 @@ func (c *CountByContract) Name() string {
 	return colors.Green + reflect.TypeOf(c).Elem().String() + colors.Off
 }
 
+func (c *CountByContract) Sort(array []*mytypes.RawLog) {
+	// Nothing to do
+}
+
 func (c *CountByContract) reportValues(msg string, m map[string]uint64) string {
 	type stats struct {
 		Contract string

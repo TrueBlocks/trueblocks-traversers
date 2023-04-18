@@ -36,6 +36,10 @@ func (c *CountByFunction) Name() string {
 	return colors.Green + reflect.TypeOf(c).Elem().String() + colors.Off
 }
 
+func (c *CountByFunction) Sort(array []*mytypes.RawReconciliation) {
+	// Nothing to do
+}
+
 func (c *CountByFunction) reportValues(msg string, m map[string]uint64) string {
 	type stats struct {
 		Encoding string

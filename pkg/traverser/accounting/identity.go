@@ -38,3 +38,7 @@ func (c *Identity) Result() string {
 func (a *Identity) Name() string {
 	return colors.Green + reflect.TypeOf(a).Elem().String() + colors.Off + ": " + fmt.Sprintf("%d", a.Count)
 }
+
+func (c *Identity) Sort(array []*mytypes.RawReconciliation) {
+	// Nothing to do
+}

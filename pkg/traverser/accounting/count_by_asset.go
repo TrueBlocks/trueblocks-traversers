@@ -36,6 +36,10 @@ func (c *CountByAsset) Name() string {
 	return colors.Green + reflect.TypeOf(c).Elem().String() + colors.Off
 }
 
+func (c *CountByAsset) Sort(array []*mytypes.RawReconciliation) {
+	// Nothing to do
+}
+
 func (c *CountByAsset) reportValues(msg string, m map[string]uint64) string {
 	type stats struct {
 		Address string

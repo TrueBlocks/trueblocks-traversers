@@ -90,6 +90,10 @@ func (a *ProfitAndLoss) Name() string {
 	return colors.Green + reflect.TypeOf(a).Elem().String() + colors.Off
 }
 
+func (c *ProfitAndLoss) Sort(array []*mytypes.RawReconciliation) {
+	// Nothing to do
+}
+
 func ToFmtStrFloat(denom string, decimals uint64, spot float64, x string) string {
 	bigTotIn := big.Float{}
 	bigTotIn.SetString(x)
