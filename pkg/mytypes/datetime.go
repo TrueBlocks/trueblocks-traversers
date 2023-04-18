@@ -16,6 +16,18 @@ func NewDateTime() DateTime {
 	return DateTime{time.Now()}
 }
 
+func NewDateTime2(y, mo, d, h, m, s int) DateTime {
+	return DateTime{time.Date(y, time.Month(mo), d, h, m, s, 0, time.UTC)}
+}
+
+func (dt *DateTime) Before(test *DateTime) bool {
+	return dt.String() < test.String()
+}
+
+func (dt *DateTime) After(test *DateTime) bool {
+	return dt.String() > test.String()
+}
+
 func (dt *DateTime) String() string {
 	ret := dt.Time.Format("2006-01-02T15:04:05")
 	ret = strings.Replace(ret, "T", " ", -1)
@@ -34,10 +46,6 @@ func (dt *DateTime) UnmarshalCSV(csv string) (err error) {
 	dt.Time, err = time.Parse(fmt, csv)
 	return err
 }
-
-// func fromGostro(in gostradamus.DateTime) DateTime {
-// 	return DateTime{in.Time()}
-// }
 
 func (dt *DateTime) EndOfMonth() DateTime {
 	g := gostradamus.DateTimeFromTime(dt.Time).CeilMonth()

@@ -44,7 +44,7 @@ type RawReconciliation struct {
 	GasOut              string      `json:"gasOut,omitempty" csv:"gasOut"`
 	TotalOutLessGas     string      `json:"totalOutLessGas" csv:"totalOutLessGas"`
 	PrevAppBlk          uint64      `json:"prevAppBlk,omitempty" csv:"prevAppBlk"`
-	PrevBal             string      `json:"prevBal,omitempty" csv:"prevBal"`
+	PrevBal             string      `json:"prevBal" csv:"prevBal"`
 	BegBalDiff          string      `json:"begBalDiff,omitempty" csv:"begBalDiff"`
 	EndBalDiff          string      `json:"endBalDiff,omitempty" csv:"endBalDiff"`
 	EndBalCalc          string      `json:"endBalCalc,omitempty" csv:"endBalCalc"`

@@ -12,6 +12,7 @@ type RawLog struct {
 	Topic2           string `json:"topic2" csv:"topic2"`
 	Topic3           string `json:"topic3" csv:"topic3"`
 	Data             string `json:"data" csv:"data"`
+	Date             string `json:"date" csv:"date"`
 	BlockNumber      string `json:"blockNumber" csv:"blockNumber"`
 	TransactionHash  string `json:"transactionHash" csv:"transactionHash"`
 	TransactionIndex string `json:"transactionIndex" csv:"transactionIndex"`

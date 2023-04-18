@@ -24,6 +24,11 @@ import (
 // --------------------------------
 func main() {
 	rootFolder, _ := os.Getwd()
+	summaryFolder := filepath.Join(rootFolder, "/summary/")
+	if !FolderExists(summaryFolder) {
+		log.Println(Usage("{0}} not found.", summaryFolder))
+		os.Exit(0)
+	}
 
 	addressFn := filepath.Join(rootFolder, "addresses.csv")
 	if !FileExists(addressFn) {
@@ -31,18 +36,24 @@ func main() {
 		os.Exit(0)
 	}
 
-	summaryFolder := filepath.Join(rootFolder, "/summary/")
-	if !FolderExists(summaryFolder) {
-		log.Println(Usage("{0}} not found.", summaryFolder))
-		os.Exit(0)
-	}
+	filterFn := filepath.Join(rootFolder, "filters.csv")
+	// if !FileExists(filterFn) {
+	// 	log.Println(Usage("{0} not found.", filterFn))
+	// 	os.Exit(0)
+	// }
 
-	opts := traverser.GetOptions(addressFn)
+	opts := traverser.GetOptions(addressFn, filterFn)
 	statTraversers := stats.GetTraversers(opts)
 	reconTraversers := accounting.GetTraversers(opts)
 	logTraversers := logs.GetTraversers(opts)
 
+	nRecons := 0
+	nLogs := 0
 	filepath.Walk(summaryFolder, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
 		isRecon := strings.Contains(path, "all_recons.csv")
 		isLog := strings.Contains(path, "all_logs.csv")
 
@@ -59,6 +70,7 @@ func main() {
 
 		log.Println("Reading file", path)
 		if isRecon {
+			nRecons++
 			recons := []*mytypes.RawReconciliation{}
 			if err := gocsv.UnmarshalFile(theFile, &recons); err != nil {
 				if !errors.Is(err, gocsv.ErrEmptyCSVFile) {
@@ -73,11 +85,18 @@ func main() {
 				for _, a := range statTraversers {
 					a.Traverse(float64(r.BlockNumber))
 				}
+
+				sorted := map[string]bool{}
 				for _, a := range reconTraversers {
+					if !sorted[a.Name()] {
+						a.Sort(recons)
+						sorted[a.Name()] = true
+					}
 					a.Traverse(r)
 				}
 			}
 		} else if isLog {
+			nLogs++
 			logs := []*mytypes.RawLog{}
 			if err := gocsv.UnmarshalFile(theFile, &logs); err != nil {
 				if !errors.Is(err, gocsv.ErrEmptyCSVFile) {
@@ -90,6 +109,7 @@ func main() {
 			log.Println(colors.Yellow+"Loaded", len(logs), "logs from", path, colors.Off)
 			for _, l := range logs {
 				for _, a := range logTraversers {
+					a.Sort(logs)
 					a.Traverse(l)
 				}
 			}
@@ -99,6 +119,11 @@ func main() {
 
 		return nil
 	})
+
+	if nRecons == 0 && nLogs == 0 {
+		log.Println(Usage("No recon or log files found in {0}", summaryFolder))
+		os.Exit(0)
+	}
 
 	for _, a := range statTraversers {
 		fmt.Println(a.Result())

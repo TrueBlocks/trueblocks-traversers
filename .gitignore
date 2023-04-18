@@ -1,3 +1,9 @@
+launch.json
+file
+ick
+shit*
+x.*
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -14,6 +20,7 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
+doBalances.sh
 doAll.sh
 doSome.sh
 .DS_Store
