@@ -115,7 +115,6 @@ func (c *Excel) GetStyles() (styles Styles, err error) {
 	month := "yyyy-mm"
 	if styles.dateMonth, err = c.ExcelFile.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
-
 			Family: "Andale Mono",
 			Color:  "#0000FF",
 		},
@@ -340,9 +339,9 @@ func (c *Excel) GetStyles() (styles Styles, err error) {
 	return
 }
 
-func (c *Excel) SetStyle(sheetName, topLeft, bottomRight string, styleId int) {
+func (c *Excel) setStyle(sheetName, topLeft, bottomRight string, styleId int) {
 	err := c.ExcelFile.SetCellStyle(sheetName, topLeft, bottomRight, styleId)
 	if err != nil {
-		log.Fatal(fmt.Errorf("error SetStyle::Setregular(%s, %s, %s, %d) %w", sheetName, topLeft, bottomRight, styleId, err))
+		log.Fatal(fmt.Errorf("error setStyle::Setregular(%s, %s, %s, %d) %w", sheetName, topLeft, bottomRight, styleId, err))
 	}
 }

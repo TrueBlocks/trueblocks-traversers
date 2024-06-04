@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
-	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/names"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/utils"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // --------------------------------
@@ -130,13 +130,13 @@ func (c *ProfitAndLoss) UpdateLedger(key string, r *mytypes.RawReconciliation) {
 	c.Ledgers[key].EndBal = r.EndBal
 }
 
-func Display(color string, a mytypes.Address, aF *mytypes.Address, verbose int, nMap names.NamesMap) string {
-	n := nMap[common.HexToAddress(a.String())].Name
+func Display(color string, a mytypes.Address, aF *mytypes.Address, verbose int, nMap map[base.Address]types.SimpleName) string {
+	n := nMap[base.HexToAddress(a.String())].Name
 	n = strings.Replace(strings.Replace(n, ",", "", -1), "#", "", -1)
 	if len(n) > 0 {
 		n = "," + n
 	} else {
-		n = "," + colors.BrightBlack + names.AddrToPetname(a.String(), "-") + colors.Off
+		n = "," + colors.BrightBlack + base.AddrToPetname(a.String(), "-") + colors.Off
 	}
 
 	ad := a.String()

@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // --------------------------------
@@ -27,7 +27,7 @@ func (c *CountByContract) Traverse(r *mytypes.RawLog) {
 }
 
 func (c *CountByContract) GetKey(r *mytypes.RawLog) string {
-	name := c.Opts.Names[common.HexToAddress(r.Address)].Name
+	name := c.Opts.Names[base.HexToAddress(r.Address)].Name
 	if name == "" {
 		name = "Unknown"
 	}

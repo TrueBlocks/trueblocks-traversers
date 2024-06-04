@@ -6,10 +6,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/logger"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/names"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 type Traverser[T mytypes.RawType] interface {
@@ -25,7 +27,8 @@ type Options struct {
 	Denom       string
 	Verbose     int
 	AddrFilters map[mytypes.Address]bool
-	Names       names.NamesMap
+	DateFilters []mytypes.DateTime
+	Names       map[base.Address]types.SimpleName
 }
 
 func GetOptions(addressFn, filterFn string) Options {
@@ -46,8 +49,8 @@ func GetOptions(addressFn, filterFn string) Options {
 		}
 	}
 
-	ret.Names, _ = names.LoadNamesMap("mainnet")
-	ret.Names[common.HexToAddress("0x")] = names.Name{Name: "Creation/Mint"}
+	ret.Names, _ = names.LoadNamesMap("mainnet", names.Regular|names.Custom|names.Prefund, []string{})
+	ret.Names[base.HexToAddress("0x")] = types.SimpleName{Name: "Creation/Mint"}
 	log.Println(colors.Yellow+"Loaded", len(ret.Names), "names...", colors.Off)
 
 	lines := AsciiFileToLines(addressFn)
@@ -55,14 +58,14 @@ func GetOptions(addressFn, filterFn string) Options {
 		if len(line) > 0 {
 			parts := strings.Split(line, ",")
 			if len(parts) > 2 {
-				name := names.Name{}
+				name := types.SimpleName{}
 				name.Tags = parts[0]
-				name.Address = parts[1]
+				name.Address = base.HexToAddress(parts[1])
 				name.Name = parts[2]
 				if name.Tags < "20" {
 					name.IsCustom = true
 				}
-				ret.Names[common.HexToAddress(name.Address)] = name
+				ret.Names[name.Address] = name
 				// log.Println(len(ret.Names), name)
 				// log.Println()
 			}
@@ -73,19 +76,38 @@ func GetOptions(addressFn, filterFn string) Options {
 	lines = AsciiFileToLines(filterFn)
 	if len(lines) > 0 {
 		ret.AddrFilters = make(map[mytypes.Address]bool)
+		ret.DateFilters = make([]mytypes.DateTime, 0, 2)
 		for _, line := range lines {
 			if strings.HasPrefix(line, "#") {
 				continue
+			} else if strings.HasPrefix(line, "0x") {
+				parts := strings.Split(line, ",")
+				if len(parts) != 2 {
+					log.Fatal("Invalid filter line: ", line)
+					os.Exit(1)
+				}
+				ret.AddrFilters[mytypes.Address(parts[0])] = true
+			} else if strings.HasSuffix(line, "Date") {
+				if len(ret.DateFilters) == 2 {
+					logger.Fatal("At most two date filters are allowed:", line)
+				}
+				parts := strings.Split(line, ",")
+				if len(parts) != 2 {
+					log.Fatal("Invalid filter line: ", line)
+					os.Exit(1)
+				}
+				dt := mytypes.DateTime{}
+				if err := dt.UnmarshalCSV(parts[0]); err != nil {
+					logger.Fatal("invalid date filter:", line, err)
+				}
+				ret.DateFilters = append(ret.DateFilters, dt)
+			} else {
+				logger.Fatal("Invalid filter line:", line)
 			}
-			parts := strings.Split(line, ",")
-			if len(parts) != 2 {
-				log.Fatal("Invalid filter line: ", line)
-				os.Exit(1)
-			}
-			ret.AddrFilters[mytypes.Address(parts[0])] = true
 		}
 	}
-	log.Println(colors.Yellow+"Loaded", len(lines), "filters...", colors.Off)
+	log.Println(colors.Yellow+"Loaded", len(ret.AddrFilters), "address filters...", colors.Off)
+	log.Println(colors.Yellow+"Loaded", len(ret.DateFilters), "date filters...", colors.Off)
 
 	return ret
 }

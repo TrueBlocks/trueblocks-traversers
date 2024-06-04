@@ -74,7 +74,7 @@ func main() {
 			recons := []*mytypes.RawReconciliation{}
 			if err := gocsv.UnmarshalFile(theFile, &recons); err != nil {
 				if !errors.Is(err, gocsv.ErrEmptyCSVFile) {
-					logger.Log(logger.Error, colors.BrightYellow+"Path: "+path+colors.Off, err)
+					logger.Error("Path:", path, err)
 					return err
 				}
 				return nil
@@ -100,7 +100,7 @@ func main() {
 			logs := []*mytypes.RawLog{}
 			if err := gocsv.UnmarshalFile(theFile, &logs); err != nil {
 				if !errors.Is(err, gocsv.ErrEmptyCSVFile) {
-					logger.Log(logger.Error, colors.BrightYellow+"Path: "+path+colors.Off, err)
+					logger.Error("Path:", path, err)
 					return err
 				}
 				return nil

@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // --------------------------------
@@ -64,10 +64,10 @@ func (c *GroupByAddress) reportValues(msg string, m map[string]uint64) string {
 	arr := make([]stats, 0, len(m))
 	for k, v := range m {
 		parts := strings.Split(k, "_")
-		record := stats{Count: v, Status: parts[0], Address: parts[1], Name: c.Opts.Names[common.HexToAddress(parts[1])].Name}
+		record := stats{Count: v, Status: parts[0], Address: parts[1], Name: c.Opts.Names[base.HexToAddress(parts[1])].Name}
 		if len(parts) > 2 {
-			record.Address = parts[1] + "," + c.Opts.Names[common.HexToAddress(parts[1])].Name
-			record.Name = parts[2] + "," + c.Opts.Names[common.HexToAddress(parts[2])].Name
+			record.Address = parts[1] + "," + c.Opts.Names[base.HexToAddress(parts[1])].Name
+			record.Name = parts[2] + "," + c.Opts.Names[base.HexToAddress(parts[2])].Name
 		}
 		arr = append(arr, record)
 

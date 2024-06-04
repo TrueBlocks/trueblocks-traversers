@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // --------------------------------
@@ -30,7 +30,7 @@ func (c *GroupByPriced) GetKey(r *mytypes.RawReconciliation) string {
 	if r.SpotPrice > 0 {
 		status = "priced"
 	}
-	return status + "_" + string(r.AssetAddress) + "_" + r.AssetSymbol + "," + c.Opts.Names[common.HexToAddress(r.AssetAddress.String())].Name
+	return status + "_" + string(r.AssetAddress) + "_" + r.AssetSymbol + "," + c.Opts.Names[base.HexToAddress(r.AssetAddress.String())].Name
 }
 
 func (c *GroupByPriced) Result() string {

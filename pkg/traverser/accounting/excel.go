@@ -8,11 +8,11 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/excel"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -21,7 +21,7 @@ type Excel struct {
 	ExcelFile *excelize.File
 	Line      int
 	Assets    map[string][]*mytypes.RawReconciliation
-	Ignored   map[string]bool
+	showOnce  map[string]bool
 }
 
 // --------------------------------
@@ -29,23 +29,35 @@ func (c *Excel) Traverse(r *mytypes.RawReconciliation) {
 	if c.ExcelFile == nil {
 		c.ExcelFile = excel.NewWorkbook("Summary", []string{"This is the summary text"})
 		c.Assets = make(map[string][]*mytypes.RawReconciliation)
-		c.Ignored = make(map[string]bool)
+		c.showOnce = make(map[string]bool)
 	}
 
-	interesting := c.Opts.AddrFilters[r.AssetAddress]
-	if len(c.Opts.AddrFilters) > 0 && !interesting {
-		if !c.Ignored[r.AssetAddress.String()] {
+	passedAddrFilter := c.Opts.AddrFilters[r.AssetAddress]
+	if len(c.Opts.AddrFilters) > 0 && !passedAddrFilter {
+		if !c.showOnce[r.AssetAddress.String()] {
 			fmt.Println("Skipping asset", r.AssetAddress.String())
 		}
-		c.Ignored[r.AssetAddress.String()] = true
+		c.showOnce[r.AssetAddress.String()] = true
 		return
 	}
 
-	// f := mytypes.NewDateTime2(2022, 1, 1, 0, 0, 1)
-	// l := mytypes.NewDateTime2(2023, 1, 1, 0, 0, 1)
-	// if r.Date.Before(&f) || r.Date.After(&l) {
-	// 	return
-	// }
+	l := 0 // len(c.Opts.DateFilters)
+	if l > 0 {
+		firstDate := mytypes.NewDateTime2(2015, 7, 30, 23, 59, 59)
+		lastDate := c.Opts.DateFilters[0]
+		if l > 1 {
+			firstDate = c.Opts.DateFilters[0]
+			lastDate = c.Opts.DateFilters[1]
+		}
+		if r.Date.Before(&firstDate) || r.Date.After(&lastDate) {
+			month := r.Date.String()[:7]
+			if !c.showOnce[month] {
+				fmt.Println("Skipping month", month)
+			}
+			c.showOnce[month] = true
+			return
+		}
+	}
 
 	c.Line += 1
 	c.Assets[c.GetKey(r)] = append(c.Assets[c.GetKey(r)], r)
@@ -99,10 +111,10 @@ func (c *Excel) Result() string {
 	}
 
 	var fieldMap = map[string]*Field{
-		"Type":            {1, "A", 5, "string", "", styles.regular},
-		"Bn":              {2, "B", 12, "int", "", styles.integer},
-		"TxId":            {3, "C", 7, "int", "", styles.integer},
-		"LogId":           {4, "D", 7, "int", "", styles.integer},
+		"Type":            {1, "A", 4, "string", "", styles.regular},
+		"Bn":              {2, "B", 11, "int", "", styles.integer},
+		"TxId":            {3, "C", 6, "int", "", styles.integer},
+		"LogId":           {4, "D", 6, "int", "", styles.integer},
 		"Year":            {5, "E", 0, "date", "", styles.dateYear},
 		"Month":           {6, "F", 0, "date", "", styles.dateMonth},
 		"Date":            {7, "G", 25, "date", "", styles.date},
@@ -114,7 +126,7 @@ func (c *Excel) Result() string {
 		"GasUsd":          {13, "M", 15, "formula", "=O{R}*T{R}", styles.accounting2},
 		"EndUsd":          {14, "N", 15, "formula", "=O{R}*U{R}", styles.accounting2},
 		"Spot":            {15, "O", 15, "float2", "", styles.price},
-		"Source":          {16, "P", 15, "string", "", styles.regular},
+		"Source":          {16, "P", 12, "string", "", styles.regular},
 		"BegUnits":        {17, "Q", 18, "float5", "", styles.accounting5},
 		"InUnits":         {18, "R", 18, "float5", "", styles.accounting5},
 		"OutUnits":        {19, "S", 18, "float5", "", styles.accounting5},
@@ -125,13 +137,13 @@ func (c *Excel) Result() string {
 		"Outflow":         {24, "X", 0, "big", "", styles.bigInteger},
 		"GasOut":          {25, "Y", 0, "big", "", styles.bigInteger},
 		"EndBal":          {26, "Z", 0, "big", "", styles.bigInteger},
-		"Check":           {27, "AA", 18, "formula", "=ROUND(Q{R}+R{R}-S{R}-T{R}-U{R},5)", styles.accounting5},
-		"Message":         {30, "AB", 20, "string", "", styles.regular},
+		"Check":           {27, "AA", 15, "formula", "=ROUND(Q{R}+R{R}-S{R}-T{R}-U{R},5)", styles.accounting5},
+		"Message":         {30, "AB", 15, "string", "", styles.regular},
 		"ReconType":       {31, "AC", 0, "string", "", styles.regular},
-		"Sender":          {32, "AD", 18, "address", "", styles.address1},
-		"Recipient":       {33, "AE", 18, "address", "", styles.address1},
-		"AccountedFor":    {34, "AF", 52, "address", "", styles.address1},
-		"TransactionHash": {35, "AG", 80, "hash", "", styles.address1},
+		"Sender":          {32, "AD", 25, "address", "", styles.address1},
+		"Recipient":       {33, "AE", 25, "address", "", styles.address1},
+		"AccountedFor":    {34, "AF", 25, "address", "", styles.address1},
+		"TransactionHash": {35, "AG", 80, "hash", "", styles.link},
 	}
 	lastCol := "AG"
 
@@ -156,17 +168,17 @@ func (c *Excel) Result() string {
 	var annually = map[string]*Field{
 		"Date":      {1, "G", 25, "date", "", styles.date},
 		"PrevUsd":   {2, "H", 15, "formula", "=H{L0}", styles.yearRow2},
-		"ChangeUsd": {3, "I", 15, "formula", "=SUM(I{A}:I{B})", styles.yearRow2},
+		"ChangeUsd": {3, "I", 15, "formula", "={L}", styles.yearRow2},
 		"BegUsd":    {4, "J", 15, "formula", "=J{L0}", styles.yearRow2},
-		"InUsd":     {5, "K", 15, "formula", "=SUM(K{A}:K{B})", styles.yearRow2},
-		"OutUsd":    {6, "L", 15, "formula", "=SUM(L{A}:L{B})", styles.yearRow2},
-		"GasUsd":    {7, "M", 15, "formula", "=SUM(M{A}:M{B})", styles.yearRow2},
+		"InUsd":     {5, "K", 15, "formula", "={L}", styles.yearRow2},
+		"OutUsd":    {6, "L", 15, "formula", "={L}", styles.yearRow2},
+		"GasUsd":    {7, "M", 15, "formula", "={L}", styles.yearRow2},
 		"EndUsd":    {8, "N", 15, "formula", "=N{LN-1}", styles.yearRow2},
 		"CheckUsd":  {9, "O", 15, "formula", "=H{R}+I{R}+K{R}-L{R}-M{R}-N{R}", styles.price},
 		"BegUnits":  {10, "Q", 18, "formula", "=Q{L0}", styles.yearRow5},
-		"InUnits":   {11, "R", 18, "formula", "=SUM(R{A}:R{B})", styles.yearRow5},
-		"OutUnits":  {12, "S", 18, "formula", "=SUM(S{A}:S{B})", styles.yearRow5},
-		"GasUnits":  {13, "T", 18, "formula", "=SUM(T{A}:T{B})", styles.yearRow5},
+		"InUnits":   {11, "R", 18, "formula", "={L}", styles.yearRow5},
+		"OutUnits":  {12, "S", 18, "formula", "={L}", styles.yearRow5},
+		"GasUnits":  {13, "T", 18, "formula", "={L}", styles.yearRow5},
 		"EndUnits":  {14, "U", 18, "formula", "=U{LN-1}", styles.yearRow5},
 		"Check":     {15, "AA", 15, "formula", "=Q{R}+R{R}-S{R}-T{R}-U{R}", styles.price},
 	}
@@ -197,7 +209,7 @@ func (c *Excel) Result() string {
 		}
 
 		bottomRow := headerRow
-		verbose := true
+		verbose := c.Opts.Verbose != 0
 
 		c.ExcelFile.SetSheetRow(sheet.Name, fmt.Sprintf("A%d", headerRow), &fields)
 
@@ -247,20 +259,11 @@ func (c *Excel) Result() string {
 					}
 					c.SetCell(sheet.Name, curRow, monthRange, fieldMap["Type"], msg)
 					c.SetCell(sheet.Name, curRow, monthRange, monthly["Date"], monthRange.pDate)
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["PrevUsd"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["ChangeUsd"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["BegUsd"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["InUsd"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["OutUsd"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["GasUsd"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["EndUsd"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["CheckUsd"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["BegUnits"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["InUnits"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["OutUnits"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["GasUnits"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["EndUnits"], "")
-					c.SetCell(sheet.Name, curRow, monthRange, monthly["Check"], "")
+					for k, field := range monthly {
+						if k != "Date" {
+							c.SetCell(sheet.Name, curRow, monthRange, field, "")
+						}
+					}
 
 					monthRange.A = curRow
 					lastRowType = "Mo"
@@ -268,13 +271,6 @@ func (c *Excel) Result() string {
 						curRow++
 						yearRange.Rows = append(yearRange.Rows, curRow)
 						yearRange.CurRows = append(yearRange.CurRows, curRow)
-						toStr := func(rows []int) string {
-							str := ""
-							for _, row := range rows {
-								str += fmt.Sprintf("%d,", row)
-							}
-							return str
-						}
 						yearRange.CurRows = monthRange.CurRows
 						msg := "Yr"
 						if verbose {
@@ -282,21 +278,11 @@ func (c *Excel) Result() string {
 						}
 						c.SetCell(sheet.Name, curRow, yearRange, fieldMap["Type"], msg)
 						c.SetCell(sheet.Name, curRow, yearRange, annually["Date"], yearRange.pDate)
-						c.SetCell(sheet.Name, curRow, yearRange, annually["PrevUsd"], "")
-						// "ChangeUsd": {3, "I", 15, "formula", "=SUM(I{A}:I{B})", styles.yearRow2},
-						c.SetCell(sheet.Name, curRow, yearRange, annually["BegUsd"], "")
-						// "InUsd":     {5, "K", 15, "formula", "=SUM(K{A}:K{B})", styles.yearRow2},
-						// "OutUsd":    {6, "L", 15, "formula", "=SUM(L{A}:L{B})", styles.yearRow2},
-						// "GasUsd":    {7, "M", 15, "formula", "=SUM(M{A}:M{B})", styles.yearRow2},
-						c.SetCell(sheet.Name, curRow, yearRange, annually["EndUsd"], "")
-						c.SetCell(sheet.Name, curRow, yearRange, annually["CheckUsd"], "")
-						c.SetCell(sheet.Name, curRow, yearRange, annually["BegUnits"], "")
-						// "InUnits":   {11, "R", 18, "formula", "=SUM(R{A}:R{B})", styles.yearRow5},
-						// "OutUnits":  {12, "S", 18, "formula", "=SUM(S{A}:S{B})", styles.yearRow5},
-						// "GasUnits":  {13, "T", 18, "formula", "=SUM(T{A}:T{B})", styles.yearRow5},
-						c.SetCell(sheet.Name, curRow, yearRange, annually["EndUnits"], "")
-						c.SetCell(sheet.Name, curRow, yearRange, annually["Check"], "")
-
+						for k, field := range annually {
+							if k != "Date" {
+								c.SetCell(sheet.Name, curRow, yearRange, field, "")
+							}
+						}
 						monthRange.CurRows = []int{}
 						monthRange.A = curRow
 						lastRowType = "Yr"
@@ -307,29 +293,19 @@ func (c *Excel) Result() string {
 			if true {
 				curRow++
 				lastRowType = "Tx"
-				chUsd := fieldMap["ChangeUsd"]
-				if curRow == headerRow+1 {
-					chUsd.Formula = "=0"
-				} else {
-					chUsd.Formula = "=J{R}-H{R}"
+				msg := "Tx"
+				if verbose {
+					msg = fmt.Sprintf("%s-%d", "Tx", txIndex)
 				}
-				pUsd := fieldMap["PrevUsd"]
-				if curRow == headerRow+1 {
-					pUsd.Formula = "=0"
-				} else {
-					pUsd.Formula = "=N{R-1}"
-				}
-
-				// c.SetCell(sheet.Name, curRow, fieldMap["Type"], fmt.Sprintf("%s-[%03d]", "Tx", curRow))
-				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Type"], fmt.Sprintf("%s-%d", "Tx", txIndex))
+				c.SetCell(sheet.Name, curRow, monthRange, fieldMap["Type"], msg)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Bn"], int(r.BlockNumber))
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["TxId"], int(r.TransactionIndex))
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["LogId"], int(r.LogIndex))
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Year"], r.Date.EndOfYear())
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Month"], r.Date.EndOfMonth())
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Date"], r.Date)
-				c.SetCell(sheet.Name, curRow, rowRange, pUsd, "prevEnd")
-				c.SetCell(sheet.Name, curRow, rowRange, chUsd, "(r.SpotPrice*begUnits)-prevEnd")
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["PrevUsd"], "")
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["ChangeUsd"], "")
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["BegUsd"], r.SpotPrice*begUnits)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["InUsd"], r.SpotPrice*inUnits)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["OutUsd"], r.SpotPrice*outUnitsLessGas)
@@ -354,34 +330,35 @@ func (c *Excel) Result() string {
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Recipient"], r.Recipient)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["AccountedFor"], r.AccountedFor)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["TransactionHash"], r.TransactionHash)
+				c.setLink(sheet.Name, fieldMap["TransactionHash"].Cell(curRow), "https://etherscan.io/tx/"+r.TransactionHash.String(), "View on Etherscan")
 
 				// both or neither can be true...
 				senderCell := fmt.Sprintf("%s%d", fieldMap["Sender"].Column, curRow)
 				if r.Sender.IsZero() {
-					c.SetStyle(sheet.Name, senderCell, senderCell, styles.zero)
+					c.setStyle(sheet.Name, senderCell, senderCell, styles.zero)
 				} else {
 					style := styles.address1
-					if c.Opts.Names[common.HexToAddress(r.Sender.String())].IsCustom {
+					if c.Opts.Names[base.HexToAddress(r.Sender.String())].IsCustom {
 						style = styles.address3
 					}
 					if r.Sender == r.AccountedFor {
 						style = styles.address2
 					}
-					c.SetStyle(sheet.Name, senderCell, senderCell, style)
+					c.setStyle(sheet.Name, senderCell, senderCell, style)
 				}
 
 				recipCell := fmt.Sprintf("%s%d", fieldMap["Recipient"].Column, curRow)
 				if r.Recipient.IsZero() {
-					c.SetStyle(sheet.Name, recipCell, recipCell, styles.zero)
+					c.setStyle(sheet.Name, recipCell, recipCell, styles.zero)
 				} else {
 					style := styles.address1
-					if c.Opts.Names[common.HexToAddress(r.Recipient.String())].IsCustom {
+					if c.Opts.Names[base.HexToAddress(r.Recipient.String())].IsCustom {
 						style = styles.address3
 					}
 					if r.Recipient == r.AccountedFor {
 						style = styles.address2
 					}
-					c.SetStyle(sheet.Name, recipCell, recipCell, style)
+					c.setStyle(sheet.Name, recipCell, recipCell, style)
 				}
 			}
 
@@ -402,20 +379,11 @@ func (c *Excel) Result() string {
 			}
 			c.SetCell(sheet.Name, curRow, monthRange, fieldMap["Type"], msg)
 			c.SetCell(sheet.Name, curRow, monthRange, monthly["Date"], monthRange.pDate)
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["PrevUsd"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["ChangeUsd"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["BegUsd"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["InUsd"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["OutUsd"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["GasUsd"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["EndUsd"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["CheckUsd"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["BegUnits"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["InUnits"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["OutUnits"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["GasUnits"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["EndUnits"], "")
-			c.SetCell(sheet.Name, curRow, monthRange, monthly["Check"], "")
+			for k, field := range monthly {
+				if k != "Date" {
+					c.SetCell(sheet.Name, curRow, monthRange, field, "")
+				}
+			}
 			monthRange.A = curRow
 			lastRowType = "Mo"
 		}
@@ -424,13 +392,6 @@ func (c *Excel) Result() string {
 			curRow++
 			yearRange.Rows = append(yearRange.Rows, curRow)
 			yearRange.CurRows = append(yearRange.CurRows, curRow)
-			toStr := func(rows []int) string {
-				str := ""
-				for _, row := range rows {
-					str += fmt.Sprintf("%d,", row)
-				}
-				return str
-			}
 			yearRange.CurRows = monthRange.CurRows
 			msg := "Yr"
 			if verbose {
@@ -438,20 +399,11 @@ func (c *Excel) Result() string {
 			}
 			c.SetCell(sheet.Name, curRow, yearRange, fieldMap["Type"], msg)
 			c.SetCell(sheet.Name, curRow, yearRange, annually["Date"], yearRange.pDate)
-			c.SetCell(sheet.Name, curRow, yearRange, annually["PrevUsd"], "")
-			// "ChangeUsd": {3, "I", 15, "formula", "=SUM(I{A}:I{B})", styles.yearRow2},
-			c.SetCell(sheet.Name, curRow, yearRange, annually["BegUsd"], "")
-			// "InUsd":     {5, "K", 15, "formula", "=SUM(K{A}:K{B})", styles.yearRow2},
-			// "OutUsd":    {6, "L", 15, "formula", "=SUM(L{A}:L{B})", styles.yearRow2},
-			// "GasUsd":    {7, "M", 15, "formula", "=SUM(M{A}:M{B})", styles.yearRow2},
-			c.SetCell(sheet.Name, curRow, yearRange, annually["EndUsd"], "")
-			c.SetCell(sheet.Name, curRow, yearRange, annually["CheckUsd"], "")
-			c.SetCell(sheet.Name, curRow, yearRange, annually["BegUnits"], "")
-			// "InUnits":   {11, "R", 18, "formula", "=SUM(R{A}:R{B})", styles.yearRow5},
-			// "OutUnits":  {12, "S", 18, "formula", "=SUM(S{A}:S{B})", styles.yearRow5},
-			// "GasUnits":  {13, "T", 18, "formula", "=SUM(T{A}:T{B})", styles.yearRow5},
-			c.SetCell(sheet.Name, curRow, yearRange, annually["EndUnits"], "")
-			c.SetCell(sheet.Name, curRow, yearRange, annually["Check"], "")
+			for k, field := range annually {
+				if k != "Date" {
+					c.SetCell(sheet.Name, curRow, yearRange, field, "")
+				}
+			}
 			monthRange.CurRows = []int{}
 			monthRange.A = curRow
 			lastRowType = "Yr"
@@ -465,7 +417,7 @@ func (c *Excel) Result() string {
 			cell1 := fmt.Sprintf("%s%d", fieldMap[field].Column, headerRow+1)
 			cell2 := fmt.Sprintf("%s%d", fieldMap[field].Column, bottomRow)
 			style := fieldMap[field].Style
-			c.SetStyle(sheet.Name, cell1, cell2, style)
+			c.setStyle(sheet.Name, cell1, cell2, style)
 		}
 
 		// showStripes := true
@@ -485,31 +437,31 @@ func (c *Excel) Result() string {
 		for _, mR := range monthRange.Rows {
 			s := fmt.Sprintf("%s%d", fieldMap[fields[0]].Column, mR)
 			e := fmt.Sprintf("%s%d", fieldMap[fields[len(fields)-1]].Column, mR)
-			c.SetStyle(sheet.Name, s, e, styles.monthRow)
+			c.setStyle(sheet.Name, s, e, styles.monthRow)
 			s = fmt.Sprintf("%s%d", monthly["Date"].Column, mR)
 			e = fmt.Sprintf("%s%d", monthly["Date"].Column, mR)
-			c.SetStyle(sheet.Name, s, e, styles.monthRowDate)
+			c.setStyle(sheet.Name, s, e, styles.monthRowDate)
 			s = fmt.Sprintf("%s%d", monthly["PrevUsd"].Column, mR)
 			e = fmt.Sprintf("%s%d", monthly["CheckUsd"].Column, mR)
-			c.SetStyle(sheet.Name, s, e, styles.monthRow2)
+			c.setStyle(sheet.Name, s, e, styles.monthRow2)
 			s = fmt.Sprintf("%s%d", monthly["BegUnits"].Column, mR)
 			e = fmt.Sprintf("%s%d", monthly["Check"].Column, mR)
-			c.SetStyle(sheet.Name, s, e, styles.monthRow5)
+			c.setStyle(sheet.Name, s, e, styles.monthRow5)
 		}
 
 		for _, yR := range yearRange.Rows {
 			s := fmt.Sprintf("%s%d", fieldMap["Type"].Column, yR)
 			e := fmt.Sprintf("%s%d", fieldMap[fields[len(fields)-1]].Column, yR)
-			c.SetStyle(sheet.Name, s, e, styles.yearRow)
+			c.setStyle(sheet.Name, s, e, styles.yearRow)
 			s = fmt.Sprintf("%s%d", annually["Date"].Column, yR)
 			e = fmt.Sprintf("%s%d", annually["Date"].Column, yR)
-			c.SetStyle(sheet.Name, s, e, styles.yearRowDate)
+			c.setStyle(sheet.Name, s, e, styles.yearRowDate)
 			s = fmt.Sprintf("%s%d", annually["PrevUsd"].Column, yR)
 			e = fmt.Sprintf("%s%d", annually["CheckUsd"].Column, yR)
-			c.SetStyle(sheet.Name, s, e, styles.yearRow2)
+			c.setStyle(sheet.Name, s, e, styles.yearRow2)
 			s = fmt.Sprintf("%s%d", annually["BegUnits"].Column, yR)
 			e = fmt.Sprintf("%s%d", annually["Check"].Column, yR)
-			c.SetStyle(sheet.Name, s, e, styles.yearRow5)
+			c.setStyle(sheet.Name, s, e, styles.yearRow5)
 		}
 	}
 
@@ -519,12 +471,12 @@ func (c *Excel) Result() string {
 	// c.SetCell("Summary", iRow, rowRange, &Field{1, "A", 12, "string", "", styles.mainHeader}, "Ignored Addresses:")
 	// for k, _ := range c.Ignored {
 	// 	c.SetCell("Summary", iRow+cnt, rowRange, &Field{1, "B", 12, "string", "", styles.address1}, k)
-	// 	c.SetCell("Summary", iRow+cnt, rowRange, &Field{1, "G", 12, "string", "", styles.address1}, c.Opts.Names[common.HexToAddress(k)].Name)
+	// 	c.SetCell("Summary", iRow+cnt, rowRange, &Field{1, "G", 12, "string", "", styles.address1}, c.Opts.Names[base.HexToAddress(k)].Name)
 	// 	cnt++
 	// }
 
 	excel.WriteLicenseSheet(c.ExcelFile)
-	c.ExcelFile.SetActiveSheet(3)
+	c.ExcelFile.SetActiveSheet(1)
 	c.ExcelFile.SaveAs("Book1.xlsx")
 	return c.Name() + "\n\t" + fmt.Sprintf("%s%d", "Excel:", c.Line)
 }
@@ -585,4 +537,16 @@ func (c *Excel) assetsToSheets() []AssetSheet {
 	}
 
 	return sheets
+}
+
+func toStr(rows []int) string {
+	str := ""
+	for _, row := range rows {
+		str += fmt.Sprintf("%d,", row)
+	}
+	return str
+}
+
+func (f *Field) Cell(row int) string {
+	return fmt.Sprintf("%s%d", f.Column, row)
 }

@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "/Users/jrush/Development/trueblocks-traversers/main.go",
-            "cwd": "/Users/jrush/Development/trueblocks-traversers/clients/person-01",
+            "cwd": "/Users/jrush/Development/trueblocks-traversers/clients/trueblocks-wallets",
             "args": [
                 "excel"
             ]

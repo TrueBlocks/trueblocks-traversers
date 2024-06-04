@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -21,13 +22,29 @@ func (c *Excel) SetCell(sheetName string, row int, sumRange CellRange, field *Fi
 	case "formula":
 		f := field.Formula
 		f = strings.Replace(f, "{R}", strconv.Itoa(row), -1)
-		f = strings.Replace(f, "{R-1}", strconv.Itoa(row-1), -1)
+		if strings.Contains(f, "{R-1}") {
+			if row == headerRow+1 {
+				f = "=0"
+			} else {
+				f = strings.Replace(f, "{R-1}", strconv.Itoa(row-1), -1)
+			}
+		}
 		f = strings.Replace(f, "{A}", strconv.Itoa(sumRange.A+1), -1)
 		f = strings.Replace(f, "{B}", strconv.Itoa(sumRange.B-1), -1)
 		if strings.Contains(f, "{L") && len(sumRange.CurRows) > 0 {
-			f = strings.Replace(f, "{L0}", strconv.Itoa(sumRange.CurRows[0]), -1)
-			f = strings.Replace(f, "{LN-1}", strconv.Itoa(sumRange.CurRows[len(sumRange.CurRows)-1]), -1)
-			f = strings.Replace(f, "{L}", strconv.Itoa(1), -1)
+			if strings.Contains(f, "{L}") {
+				sum := ""
+				for i, v := range sumRange.CurRows {
+					if i > 0 {
+						sum += "+"
+					}
+					sum += fmt.Sprintf("%s%d", field.Column, v)
+				}
+				f = strings.Replace(f, "{L}", sum, -1)
+			} else {
+				f = strings.Replace(f, "{L0}", strconv.Itoa(sumRange.CurRows[0]), -1)
+				f = strings.Replace(f, "{LN-1}", strconv.Itoa(sumRange.CurRows[len(sumRange.CurRows)-1]), -1)
+			}
 		}
 		err = c.ExcelFile.SetCellFormula(sheetName, cell, f)
 	case "float2":
@@ -49,7 +66,16 @@ func (c *Excel) SetCell(sheetName string, row int, sumRange CellRange, field *Fi
 		err = c.ExcelFile.SetCellValue(sheetName, cell, tt)
 	case "address":
 		a := val.(mytypes.Address)
-		err = c.ExcelFile.SetCellStr(sheetName, cell, a.String())
+		n := c.Opts.Names[base.HexToAddress(a.String())].Name
+		if len(n) > 0 {
+			if len(n) > 10 {
+				n = n[0:10]
+			}
+			n = n + "-" + a.String()[0:6]
+		} else {
+			n = a.String()
+		}
+		err = c.ExcelFile.SetCellStr(sheetName, cell, n)
 	case "hash":
 		a := val.(common.Hash)
 		err = c.ExcelFile.SetCellStr(sheetName, cell, a.String())
