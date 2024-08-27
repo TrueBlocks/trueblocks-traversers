@@ -28,7 +28,7 @@ type Options struct {
 	Verbose     int
 	AddrFilters map[mytypes.Address]bool
 	DateFilters []mytypes.DateTime
-	Names       map[base.Address]types.SimpleName
+	Names       map[base.Address]types.Name
 }
 
 func GetOptions(addressFn, filterFn string) Options {
@@ -50,7 +50,7 @@ func GetOptions(addressFn, filterFn string) Options {
 	}
 
 	ret.Names, _ = names.LoadNamesMap("mainnet", names.Regular|names.Custom|names.Prefund, []string{})
-	ret.Names[base.HexToAddress("0x")] = types.SimpleName{Name: "Creation/Mint"}
+	ret.Names[base.HexToAddress("0x")] = types.Name{Name: "Creation/Mint"}
 	log.Println(colors.Yellow+"Loaded", len(ret.Names), "names...", colors.Off)
 
 	lines := AsciiFileToLines(addressFn)
@@ -58,7 +58,7 @@ func GetOptions(addressFn, filterFn string) Options {
 		if len(line) > 0 {
 			parts := strings.Split(line, ",")
 			if len(parts) > 2 {
-				name := types.SimpleName{}
+				name := types.Name{}
 				name.Tags = parts[0]
 				name.Address = base.HexToAddress(parts[1])
 				name.Name = parts[2]
