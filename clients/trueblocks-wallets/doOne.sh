@@ -12,7 +12,6 @@ yes | chifra export --decache $1
 
 chifra export --fmt csv --articulate --cache --cache_traces $1 >raw/txs/$1.csv
 wc raw/txs/$1.csv
-exit
 
 chifra export --fmt csv --articulate --accounting --statements --cache --cache_traces $1 >raw/recons/$1.csv
 # wc raw/recons/$1.csv
