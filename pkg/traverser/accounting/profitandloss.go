@@ -130,7 +130,7 @@ func (c *ProfitAndLoss) UpdateLedger(key string, r *mytypes.RawReconciliation) {
 	c.Ledgers[key].EndBal = r.EndBal
 }
 
-func Display(color string, a mytypes.Address, aF *mytypes.Address, verbose int, nMap map[base.Address]types.SimpleName) string {
+func Display(color string, a mytypes.Address, aF *mytypes.Address, verbose int, nMap map[base.Address]types.Name) string {
 	n := nMap[base.HexToAddress(a.String())].Name
 	n = strings.Replace(strings.Replace(n, ",", "", -1), "#", "", -1)
 	if len(n) > 0 {
