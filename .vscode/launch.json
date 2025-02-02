@@ -12,7 +12,7 @@
             "program": "/Users/jrush/Development/trueblocks-traversers/main.go",
             "cwd": "/Users/jrush/Development/trueblocks-traversers/clients/trueblocks-wallets",
             "args": [
-                "excel"
+                "trueblocks.eth"
             ]
         }
     ]

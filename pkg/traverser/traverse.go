@@ -1,13 +1,13 @@
 package traverser
 
 import (
-	"bufio"
 	"log"
 	"os"
 	"strings"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/file"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/logger"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/names"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
@@ -49,11 +49,11 @@ func GetOptions(addressFn, filterFn string) Options {
 		}
 	}
 
-	ret.Names, _ = names.LoadNamesMap("mainnet", names.Regular|names.Custom|names.Prefund, []string{})
+	ret.Names, _ = names.LoadNamesMap("mainnet", types.Regular|types.Custom|types.Prefund, []string{})
 	ret.Names[base.HexToAddress("0x")] = types.Name{Name: "Creation/Mint"}
 	log.Println(colors.Yellow+"Loaded", len(ret.Names), "names...", colors.Off)
 
-	lines := AsciiFileToLines(addressFn)
+	lines := file.AsciiFileToLines(addressFn)
 	for _, line := range lines {
 		if len(line) > 0 {
 			parts := strings.Split(line, ",")
@@ -73,7 +73,7 @@ func GetOptions(addressFn, filterFn string) Options {
 	}
 	log.Println(colors.Yellow+"Loaded", len(lines), "addresses...", colors.Off)
 
-	lines = AsciiFileToLines(filterFn)
+	lines = file.AsciiFileToLines(filterFn)
 	if len(lines) > 0 {
 		ret.AddrFilters = make(map[mytypes.Address]bool)
 		ret.DateFilters = make([]mytypes.DateTime, 0, 2)
@@ -109,20 +109,5 @@ func GetOptions(addressFn, filterFn string) Options {
 	log.Println(colors.Yellow+"Loaded", len(ret.AddrFilters), "address filters...", colors.Off)
 	log.Println(colors.Yellow+"Loaded", len(ret.DateFilters), "date filters...", colors.Off)
 
-	return ret
-}
-
-func AsciiFileToLines(filename string) []string {
-	file, err := os.OpenFile(filename, os.O_RDONLY, 0)
-	if err != nil {
-		return []string{}
-	}
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanLines)
-	var ret []string
-	for scanner.Scan() {
-		ret = append(ret, scanner.Text())
-	}
-	file.Close()
 	return ret
 }

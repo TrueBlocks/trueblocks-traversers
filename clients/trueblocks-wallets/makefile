@@ -34,9 +34,9 @@ data:
 #	# @cat output/recons/monthly_p_and_l.csv | grep ",202[12]-" >output/recons/monthly_p_and_l_2022.csv
 # 	@make excel
 
-# excel:
-# 	@echo "Creating spreadsheet..."
-# 	@../../bin/accounting excel ; mv Book1.xlsx output/trueblocks-wallets.xlsx
+excel:
+	@echo "Creating spreadsheet..."
+	@../../bin/accounting excel ; mv Book1.xlsx output/trueblocks-wallets.xlsx
 
 # .
 # ├── output

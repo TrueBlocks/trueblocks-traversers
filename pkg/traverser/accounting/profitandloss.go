@@ -136,7 +136,7 @@ func Display(color string, a mytypes.Address, aF *mytypes.Address, verbose int, 
 	if len(n) > 0 {
 		n = "," + n
 	} else {
-		n = "," + colors.BrightBlack + base.AddrToPetname(a.String(), "-") + colors.Off
+		n = "," + colors.BrightBlack + a.String() + colors.Off
 	}
 
 	ad := a.String()
