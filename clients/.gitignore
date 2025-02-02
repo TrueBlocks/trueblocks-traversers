@@ -1,5 +1,11 @@
-build
+*.csv
 *.tar.gz
 *.xls*
-*.csv
+
+doAll.sh
+doBalances.sh
+doSome.sh
+
+build
 NOTES.md
+shit*
