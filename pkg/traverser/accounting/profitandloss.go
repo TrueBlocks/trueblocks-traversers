@@ -13,7 +13,6 @@ import (
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/utils"
 )
@@ -22,22 +21,22 @@ import (
 type ProfitAndLoss struct {
 	Opts     traverser.Options
 	LastDate string
-	Ledgers  map[string]*mytypes.RawReconciliation
+	Ledgers  map[string]*types.Statement
 	LastKey  string
 	w        *tabwriter.Writer
 }
 
-func (c *ProfitAndLoss) Traverse(r *mytypes.RawReconciliation) {
+func (c *ProfitAndLoss) Traverse(r *types.Statement) {
 	if len(c.Ledgers) == 0 {
 		c.w = tabwriter.NewWriter(os.Stdout, 0, 0, 1, ',', 0)
 		if c.Ledgers == nil { // order matters
 			c.ReportHeader(c.Opts.Verbose, r)
 		}
-		c.Ledgers = make(map[string]*mytypes.RawReconciliation)
+		c.Ledgers = make(map[string]*types.Statement)
 		c.LastKey = ""
 	}
 
-	if len(c.Opts.AddrFilters) > 0 && !c.Opts.AddrFilters[r.AssetAddress] {
+	if len(c.Opts.AddrFilters) > 0 && !c.Opts.AddrFilters[r.Asset] {
 		return
 	}
 
@@ -66,20 +65,20 @@ func (c *ProfitAndLoss) Traverse(r *mytypes.RawReconciliation) {
 		c.Ledgers[key] = r
 	}
 
-	c.LastDate = mytypes.GetDateKey(c.Opts.Period, r.Date)
+	c.LastDate = base.GetDateKey(c.Opts.Period, r.DateTime())
 	c.LastKey = key
 }
 
-func (c *ProfitAndLoss) GetKey(r *mytypes.RawReconciliation) string {
+func (c *ProfitAndLoss) GetKey(r *types.Statement) string {
 	if c.Opts.Period == "blockly" {
 		return fmt.Sprintf("%s-%08d", c.GetAsset(r), r.BlockNumber)
 	}
 
-	return fmt.Sprintf("%s-%s", c.GetAsset(r), mytypes.GetDateKey(c.Opts.Period, r.Date))
+	return fmt.Sprintf("%s-%s", c.GetAsset(r), base.GetDateKey(c.Opts.Period, r.DateTime()))
 }
 
-func (c *ProfitAndLoss) GetAsset(r *mytypes.RawReconciliation) string {
-	return fmt.Sprintf("%s-%s-%s", r.AssetAddress.String(), r.AssetSymbol, r.AccountedFor.String())
+func (c *ProfitAndLoss) GetAsset(r *types.Statement) string {
+	return fmt.Sprintf("%s-%s-%s", r.Asset.String(), r.Symbol, r.AccountedFor.String())
 }
 
 func (c *ProfitAndLoss) Result() string {
@@ -90,17 +89,17 @@ func (a *ProfitAndLoss) Name() string {
 	return colors.Green + reflect.TypeOf(a).Elem().String() + colors.Off
 }
 
-func (c *ProfitAndLoss) Sort(array []*mytypes.RawReconciliation) {
+func (c *ProfitAndLoss) Sort(array []*types.Statement) {
 	// Nothing to do
 }
 
-func ToFmtStrFloat(denom string, decimals uint64, spot float64, x string) string {
+func ToFmtStrFloat(denom string, decimals base.Value, spot base.Float, x string) string {
 	bigTotIn := big.Float{}
 	bigTotIn.SetString(x)
 	return ToFmtStr(denom, decimals, spot, &bigTotIn)
 }
 
-func ToFmtStr(denom string, decimals uint64, spot float64, x *big.Float) string {
+func ToFmtStr(denom string, decimals base.Value, spot base.Float, x *big.Float) string {
 	v := *x
 	switch denom {
 	case "units":
@@ -109,8 +108,7 @@ func ToFmtStr(denom string, decimals uint64, spot float64, x *big.Float) string 
 		v = *utils.PriceUsd(v.String(), decimals, &one)
 		return v.Text('f', int(decimals))
 	case "usd":
-		sp := big.Float{}
-		sp.SetFloat64(spot)
+		sp := (big.Float)(spot)
 		v = *utils.PriceUsd(v.String(), decimals, &sp)
 		return v.Text('f', 6)
 	case "wei":
@@ -120,17 +118,21 @@ func ToFmtStr(denom string, decimals uint64, spot float64, x *big.Float) string 
 	}
 }
 
-func (c *ProfitAndLoss) UpdateLedger(key string, r *mytypes.RawReconciliation) {
-	var x big.Float
-	x.SetString(c.Ledgers[key].AmountNet)
-	var x1 big.Float
-	x1.SetString(r.AmountNet)
-	x.Add(&x, &x1)
-	c.Ledgers[key].AmountNet = x.String()
+func (c *ProfitAndLoss) UpdateLedger(key string, r *types.Statement) {
+	abs := r.AmountNet().Abs()
+	if r.AmountNet().GreaterThan(base.ZeroWei) {
+		current := c.Ledgers[key].TotalIn()
+		current.Add(current, abs)
+		c.Ledgers[key].AmountIn = *current
+	} else if r.AmountNet().LessThan(base.ZeroWei) {
+		current := c.Ledgers[key].TotalOut()
+		current.Add(current, abs)
+		c.Ledgers[key].AmountOut = *current
+	}
 	c.Ledgers[key].EndBal = r.EndBal
 }
 
-func Display(color string, a mytypes.Address, aF *mytypes.Address, verbose int, nMap map[base.Address]types.Name) string {
+func Display(color string, a base.Address, aF *base.Address, verbose int, nMap map[base.Address]types.Name) string {
 	n := nMap[base.HexToAddress(a.String())].Name
 	n = strings.Replace(strings.Replace(n, ",", "", -1), "#", "", -1)
 	if len(n) > 0 {
@@ -154,8 +156,8 @@ func Display(color string, a mytypes.Address, aF *mytypes.Address, verbose int, 
 	return color + ad[0:8] + "..." + ad[len(ad)-6:] + colors.Off + n
 }
 
-func (c *ProfitAndLoss) Report(msg, color string, spot float64, r *mytypes.RawReconciliation) {
-	if len(c.Opts.AddrFilters) > 0 && !c.Opts.AddrFilters[r.AssetAddress] {
+func (c *ProfitAndLoss) Report(msg, color string, spot base.Float, r *types.Statement) {
+	if len(c.Opts.AddrFilters) > 0 && !c.Opts.AddrFilters[r.Asset] {
 		return
 	}
 
@@ -165,35 +167,35 @@ func (c *ProfitAndLoss) Report(msg, color string, spot float64, r *mytypes.RawRe
 	}
 
 	denom := c.Opts.Denom
-	if denom == "usd" && r.SpotPrice == 0 {
+	if denom == "usd" && r.SpotPrice.IsZero() {
 		denom = "not-priced"
 	}
-	date := colors.Red + mytypes.GetDateKey(c.Opts.Period, r.Date)
+	date := colors.Red + base.GetDateKey(c.Opts.Period, r.DateTime())
 	if msg != "Summary" {
-		date = colors.Red + mytypes.GetDateKey("secondly", r.Date)
+		date = colors.Red + base.GetDateKey("secondly", r.DateTime())
 	}
-	symbol := colors.Green + r.AssetSymbol
-	asset := color + Display(color, r.AssetAddress, nil, c.Opts.Verbose, c.Opts.Names)
+	symbol := colors.Green + r.Symbol
+	asset := color + Display(color, r.Asset, nil, c.Opts.Verbose, c.Opts.Names)
 	sender := Display(color, r.Sender, &r.AccountedFor, c.Opts.Verbose, c.Opts.Names)
 	recipient := Display(color, r.Recipient, &r.AccountedFor, c.Opts.Verbose, c.Opts.Names)
 	var x big.Float
-	x.SetString(r.BegBal)
+	x.SetString(r.BegBal.Text(10))
 	beg := color + ToFmtStr(c.Opts.Denom, r.Decimals, spot, &x)
-	x.SetString(r.AmountNet)
+	x.SetString(r.AmountNet().Text(10))
 	net := ToFmtStr(c.Opts.Denom, r.Decimals, spot, &x)
-	x.SetString(r.EndBal)
+	x.SetString(r.EndBal.Text(10))
 	end := ToFmtStr(c.Opts.Denom, r.Decimals, spot, &x)
 	if f(x) == 0 {
 		end = colors.BrightBlack + end
 	}
 	bigTotIn := big.Float{}
-	bigTotIn.SetString(r.TotalIn)
-	totIn := ToFmtStrFloat(c.Opts.Denom, r.Decimals, spot, r.TotalIn)
-	gasOut := ToFmtStrFloat(c.Opts.Denom, r.Decimals, spot, r.GasOut)
-	totOutLessGas := ToFmtStrFloat(c.Opts.Denom, r.Decimals, spot, r.TotalOutLessGas)
-	sig := strings.Split(strings.Replace(strings.Replace(r.Signature, "{name:", "", -1), "}", "", -1), "|")[0]
+	bigTotIn.SetString(r.TotalIn().Text(10))
+	totIn := ToFmtStrFloat(c.Opts.Denom, r.Decimals, spot, r.TotalIn().Text(10))
+	gasOut := ToFmtStrFloat(c.Opts.Denom, r.Decimals, spot, r.GasOut.Text(10))
+	totOutLessGas := ToFmtStrFloat(c.Opts.Denom, r.Decimals, spot, r.TotalOutLessGas().Text(10))
+	sig := strings.Split(strings.Replace(strings.Replace(r.Signature(), "{name:", "", -1), "}", "", -1), "|")[0]
 	if len(sig) == 0 {
-		sig = r.Encoding
+		sig = r.Encoding()
 	}
 	sig = colors.White + sig
 	if msg == "Summary" {
@@ -202,7 +204,7 @@ func (c *ProfitAndLoss) Report(msg, color string, spot float64, r *mytypes.RawRe
 	hash := color + r.TransactionHash.String()
 
 	checks := map[bool]string{false: colors.Red + "x", true: colors.Green + "ok"}
-	check := checks[r.Reconciled]
+	check := checks[r.Reconciled()]
 
 	var row string
 	if msg == "Summary" {
@@ -242,7 +244,7 @@ func (c *ProfitAndLoss) Report(msg, color string, spot float64, r *mytypes.RawRe
 	} else {
 		if c.Opts.Verbose > 1 {
 			row = fmt.Sprintf(
-				"%s\t%d\t%d\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%f\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s%s",
+				"%s\t%d\t%d\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s%s",
 				msg,
 				r.BlockNumber,
 				r.TransactionIndex,
@@ -255,7 +257,7 @@ func (c *ProfitAndLoss) Report(msg, color string, spot float64, r *mytypes.RawRe
 				sender,
 				recipient,
 				r.PriceSource,
-				r.SpotPrice,
+				r.SpotPrice.String(),
 				r.Decimals,
 				denom,
 				beg,
@@ -265,12 +267,12 @@ func (c *ProfitAndLoss) Report(msg, color string, spot float64, r *mytypes.RawRe
 				gasOut,
 				totOutLessGas,
 				sig,
-				r.ReconciliationType,
+				r.ReconciliationType(),
 				check,
 				colors.Off)
 		} else {
 			row = fmt.Sprintf(
-				"%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%f\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s%s",
+				"%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s%s",
 				msg,
 				r.BlockNumber,
 				r.TransactionIndex,
@@ -280,14 +282,14 @@ func (c *ProfitAndLoss) Report(msg, color string, spot float64, r *mytypes.RawRe
 				sender,
 				recipient,
 				r.PriceSource,
-				r.SpotPrice,
+				r.SpotPrice.String(),
 				r.Decimals,
 				denom,
 				beg,
 				net,
 				end,
 				sig,
-				r.ReconciliationType,
+				r.ReconciliationType(),
 				check,
 				colors.Off)
 		}
@@ -296,7 +298,7 @@ func (c *ProfitAndLoss) Report(msg, color string, spot float64, r *mytypes.RawRe
 	c.w.Flush()
 }
 
-func (c *ProfitAndLoss) ReportHeader(verbose int, r *mytypes.RawReconciliation) {
+func (c *ProfitAndLoss) ReportHeader(verbose int, r *types.Statement) {
 	var fields []string
 	if verbose > 1 {
 		fields = []string{

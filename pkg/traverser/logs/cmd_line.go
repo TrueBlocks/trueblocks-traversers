@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
-func GetTraversers(opts traverser.Options) []traverser.Traverser[*mytypes.RawLog] {
-	ret := make([]traverser.Traverser[*mytypes.RawLog], 0)
+func GetTraversers(opts traverser.Options) []traverser.Traverser[*types.Log] {
+	ret := make([]traverser.Traverser[*types.Log], 0)
 	for _, a := range os.Args {
 		if a == "logs.counter" || a == "counters" {
 			ret = append(ret, &Counter{Opts: opts})

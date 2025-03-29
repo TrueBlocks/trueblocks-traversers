@@ -5,12 +5,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
-func GetTraversers(opts traverser.Options) []traverser.Traverser[*mytypes.RawReconciliation] {
-	ret := make([]traverser.Traverser[*mytypes.RawReconciliation], 0)
+func GetTraversers(opts traverser.Options) []traverser.Traverser[*types.Statement] {
+	ret := make([]traverser.Traverser[*types.Statement], 0)
 	for _, a := range os.Args {
 		if a == "accounting.counter" || a == "counters" {
 			ret = append(ret, &Counter{Opts: opts})

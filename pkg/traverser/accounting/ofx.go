@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
@@ -15,11 +15,11 @@ type OfxWriter struct {
 	Value uint64
 }
 
-func (c *OfxWriter) Traverse(r *mytypes.RawReconciliation) {
+func (c *OfxWriter) Traverse(r *types.Statement) {
 	// SendToOfx(connection, r)
 }
 
-func (c *OfxWriter) GetKey(r *mytypes.RawReconciliation) string {
+func (c *OfxWriter) GetKey(r *types.Statement) string {
 	return ""
 }
 

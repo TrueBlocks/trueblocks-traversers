@@ -8,7 +8,7 @@ import (
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
@@ -18,19 +18,19 @@ type GroupByPriced struct {
 	Values map[string]uint64
 }
 
-func (c *GroupByPriced) Traverse(r *mytypes.RawReconciliation) {
+func (c *GroupByPriced) Traverse(r *types.Statement) {
 	if len(c.Values) == 0 {
 		c.Values = make(map[string]uint64)
 	}
 	c.Values[c.GetKey(r)]++
 }
 
-func (c *GroupByPriced) GetKey(r *mytypes.RawReconciliation) string {
+func (c *GroupByPriced) GetKey(r *types.Statement) string {
 	status := "unpriced"
-	if r.SpotPrice > 0 {
+	if !r.SpotPrice.IsZero() {
 		status = "priced"
 	}
-	return status + "_" + string(r.AssetAddress) + "_" + r.AssetSymbol + "," + c.Opts.Names[base.HexToAddress(r.AssetAddress.String())].Name
+	return status + "_" + r.Asset.Hex() + "_" + r.Symbol + "," + c.Opts.Names[base.HexToAddress(r.Asset.String())].Name
 }
 
 func (c *GroupByPriced) Result() string {
@@ -41,13 +41,13 @@ func (c *GroupByPriced) Name() string {
 	return colors.Green + reflect.TypeOf(c).Elem().String() + colors.Off
 }
 
-func (c *GroupByPriced) Sort(array []*mytypes.RawReconciliation) {
+func (c *GroupByPriced) Sort(array []*types.Statement) {
 	// Nothing to do
 }
 
 func (c *GroupByPriced) reportValues(msg string, m map[string]uint64) string {
 	type stats struct {
-		Address string
+		Address base.Address
 		Symbol  string
 		Count   uint64
 		Status  string
@@ -58,7 +58,7 @@ func (c *GroupByPriced) reportValues(msg string, m map[string]uint64) string {
 	arr := make([]stats, 0, len(m))
 	for k, v := range m {
 		parts := strings.Split(k, "_")
-		arr = append(arr, stats{Count: v, Status: parts[0], Address: parts[1], Symbol: parts[2]})
+		arr = append(arr, stats{Count: v, Status: parts[0], Address: base.HexToAddress(parts[1]), Symbol: parts[2]})
 		nTransfers += int(v)
 		if parts[0] == "priced" {
 			nPriced += int(v)
@@ -69,7 +69,7 @@ func (c *GroupByPriced) reportValues(msg string, m map[string]uint64) string {
 			if arr[i].Address == arr[j].Address {
 				return arr[i].Symbol < arr[j].Symbol
 			}
-			return arr[i].Address < arr[j].Address
+			return arr[i].Address.LessThan(arr[j].Address)
 		}
 		return arr[i].Count > arr[j].Count
 	})

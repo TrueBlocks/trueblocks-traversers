@@ -8,7 +8,7 @@ import (
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
@@ -19,34 +19,38 @@ type CountByContract struct {
 	Values map[string]uint64
 }
 
-func (c *CountByContract) Traverse(r *mytypes.RawLog) {
+func (c *CountByContract) Traverse(r *types.Log) {
 	if len(c.Values) == 0 {
 		c.Values = make(map[string]uint64)
 	}
 	c.Values[c.GetKey(r)]++
 }
 
-func (c *CountByContract) GetKey(r *mytypes.RawLog) string {
-	name := c.Opts.Names[base.HexToAddress(r.Address)].Name
+func (c *CountByContract) GetKey(r *types.Log) string {
+	name := c.Opts.Names[r.Address].Name
 	if name == "" {
 		name = "Unknown"
 	}
-	funcName := strings.Split(strings.Replace(strings.Replace(r.CompressedLog, "{name:", "", -1), "}", "", -1), "|")[0]
+	funcName := strings.Split(strings.Replace(strings.Replace(r.CompressedLog(), "{name:", "", -1), "}", "", -1), "|")[0]
 	if funcName == "" {
 		funcName = "Unknown"
 	}
 
+	topic0 := "no topic"
+	if len(r.Topics) > 0 {
+		topic0 = r.Topics[0].Hex()
+	}
 	switch c.Mode {
 	case "topic_only":
-		return r.Topic0 + "_" + funcName
+		return topic0 + "_" + funcName
 	case "contract_only":
-		return r.Address + "_" + name
+		return r.Address.Hex() + "_" + name
 	case "contract_last":
-		return r.Topic0 + "_" + funcName + "_" + r.Address + "_" + name
+		return topic0 + "_" + funcName + "_" + r.Address.Hex() + "_" + name
 	case "contract_first":
 		fallthrough
 	default:
-		return r.Address + "_" + name + "_" + r.Topic0 + "_" + funcName
+		return r.Address.Hex() + "_" + name + "_" + topic0 + "_" + funcName
 	}
 }
 
@@ -58,15 +62,15 @@ func (c *CountByContract) Name() string {
 	return colors.Green + reflect.TypeOf(c).Elem().String() + colors.Off
 }
 
-func (c *CountByContract) Sort(array []*mytypes.RawLog) {
+func (c *CountByContract) Sort(array []*types.Log) {
 	// Nothing to do
 }
 
 func (c *CountByContract) reportValues(msg string, m map[string]uint64) string {
 	type stats struct {
-		Contract string
+		Contract base.Address
 		Name     string
-		Topic    string
+		Topic    base.Topic
 		Function string
 		Count    int64
 		Sort     string
@@ -87,16 +91,16 @@ func (c *CountByContract) reportValues(msg string, m map[string]uint64) string {
 			val = stats{Count: int64(v), Topic: parts[0], Function: parts[1]}
 			val.Sort = sortStr(val.Topic, val.Function, "", "")
 		case "contract_only":
-			val = stats{Count: int64(v), Contract: parts[0], Name: parts[1]}
-			val.Sort = sortStr(val.Contract, val.Name, "", "")
+			val = stats{Count: int64(v), Contract: base.HexToAddress(parts[0]), Name: parts[1]}
+			val.Sort = sortStr(val.Contract.Hex(), val.Name, "", "")
 		case "contract_last":
-			val = stats{Count: int64(v), Topic: parts[0], Function: parts[1], Contract: parts[2], Name: parts[3]}
-			val.Sort = sortStr(val.Topic, val.Function, val.Contract, val.Name)
+			val = stats{Count: int64(v), Topic: parts[0], Function: parts[1], Contract: base.HexToAddress(parts[2]), Name: parts[3]}
+			val.Sort = sortStr(val.Topic, val.Function, val.Contract.Hex(), val.Name)
 		case "contract_first":
 			fallthrough
 		default:
-			val = stats{Count: int64(v), Contract: parts[0], Name: parts[1], Topic: parts[2], Function: parts[3]}
-			val.Sort = sortStr(val.Contract, val.Name, val.Topic, val.Function)
+			val = stats{Count: int64(v), Contract: base.HexToAddress(parts[0]), Name: parts[1], Topic: parts[2], Function: parts[3]}
+			val.Sort = sortStr(val.Contract.Hex(), val.Name, val.Topic, val.Function)
 		}
 		arr = append(arr, val)
 	}

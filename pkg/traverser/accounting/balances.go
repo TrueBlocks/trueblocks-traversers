@@ -7,27 +7,27 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/utils"
 )
 
 // --------------------------------
 type AssetStatement struct {
 	Opts   traverser.Options
-	Values map[string]*mytypes.RawReconciliation
+	Values map[string]*types.Statement
 }
 
-func (c *AssetStatement) Traverse(r *mytypes.RawReconciliation) {
+func (c *AssetStatement) Traverse(r *types.Statement) {
 	if len(c.Values) == 0 {
-		c.Values = make(map[string]*mytypes.RawReconciliation)
+		c.Values = make(map[string]*types.Statement)
 	}
 	c.Values[c.GetKey(r)] = r
 }
 
-func (c *AssetStatement) GetKey(r *mytypes.RawReconciliation) string {
-	return string(r.AssetAddress) + "_" + r.AssetSymbol
+func (c *AssetStatement) GetKey(r *types.Statement) string {
+	return r.Asset.Hex() + "_" + r.Symbol
 }
 
 func (c *AssetStatement) Result() string {
@@ -38,16 +38,16 @@ func (c *AssetStatement) Name() string {
 	return colors.Green + reflect.TypeOf(c).Elem().String() + colors.Off
 }
 
-func (c *AssetStatement) Sort(array []*mytypes.RawReconciliation) {
+func (c *AssetStatement) Sort(array []*types.Statement) {
 	// Nothing to do
 }
 
-func (c *AssetStatement) reportValues(msg string, m map[string]*mytypes.RawReconciliation) string {
+func (c *AssetStatement) reportValues(msg string, m map[string]*types.Statement) string {
 	type stats struct {
-		Address string
+		Address base.Address
 		Symbol  string
 		Balance string
-		Recon   *mytypes.RawReconciliation
+		Recon   *types.Statement
 	}
 	hasPriced := 0
 	hasNotPriced := 0
@@ -55,15 +55,15 @@ func (c *AssetStatement) reportValues(msg string, m map[string]*mytypes.RawRecon
 	zeroNotPriced := 0
 
 	arr := make([]stats, 0, len(m))
-	for k, v := range m {
+	for k, val := range m {
 		parts := strings.Split(k, "_")
-		stat := stats{Recon: v, Address: parts[0], Symbol: parts[1]}
-		var x big.Float
-		x.SetString(v.EndBal)
-		stat.Balance = ToFmtStr(c.Opts.Denom, v.Decimals, v.SpotPrice, &x)
+		stat := stats{Recon: val, Address: base.HexToAddress(parts[0]), Symbol: parts[1]}
+		x := big.Float{}
+		x.SetString(val.EndBal.Text(10))
+		stat.Balance = ToFmtStr(c.Opts.Denom, val.Decimals, val.SpotPrice, &x)
 		arr = append(arr, stat)
-		hasUnits := x.Cmp(utils.Zero()) != 0
-		priced := v.SpotPrice > 0
+		hasUnits := !val.EndBal.IsZero()
+		priced := !val.SpotPrice.IsZero()
 		if hasUnits && priced {
 			hasPriced++
 		} else if hasUnits && !priced {
@@ -75,14 +75,12 @@ func (c *AssetStatement) reportValues(msg string, m map[string]*mytypes.RawRecon
 		}
 	}
 	sort.Slice(arr, func(i, j int) bool {
-		var xi big.Float
-		xi.SetString(arr[i].Recon.EndBal)
-		var xj big.Float
-		xj.SetString(arr[j].Recon.EndBal)
-		if xi.Cmp(&xj) == 0 {
-			return arr[i].Address < arr[j].Address
+		eb1 := arr[i].Recon.EndBal
+		eb2 := arr[j].Recon.EndBal
+		if eb1.Equal(&eb2) {
+			return arr[i].Address.LessThan(arr[j].Address)
 		}
-		return xi.Cmp(&xj) < 0
+		return eb1.LessThan(&eb2)
 	})
 
 	ret := fmt.Sprintf("Number of %s: %d\n", msg, len(c.Values))
@@ -90,48 +88,76 @@ func (c *AssetStatement) reportValues(msg string, m map[string]*mytypes.RawRecon
 	ret += ExportHeader("Non-Zero Units Priced", hasPriced)
 	ret += "Date,Asset,Symbol,Price Source,Spot Price,Units,Usd\n"
 	for _, val := range arr {
-		var x big.Float
-		x.SetString(val.Recon.EndBal)
-		hasUnits := x.Cmp(utils.Zero()) != 0
-		priced := val.Recon.SpotPrice > 0
+		hasUnits := !val.Recon.EndBal.IsZero()
+		priced := !val.Recon.SpotPrice.IsZero()
 		if hasUnits && priced {
-			ret += fmt.Sprintf("%s,%s,%s,%s,%f,%s\n", val.Recon.Date.String(), val.Address, val.Symbol, val.Recon.PriceSource, val.Recon.SpotPrice, val.Balance)
+			format := "%s,%s,%s,%s,%s,%s\n"
+			ret += fmt.Sprintf(
+				format,
+				val.Recon.Date(),
+				val.Address,
+				val.Symbol,
+				val.Recon.PriceSource,
+				val.Recon.SpotPrice.String(),
+				val.Balance,
+			)
 		}
 	}
 
 	ret += ExportHeader("Non-Zero Units Unpriced", hasNotPriced)
 	ret += "Date,Asset,Symbol,Price Source,Spot Price,Units,Usd\n"
 	for _, val := range arr {
-		var x big.Float
-		x.SetString(val.Recon.EndBal)
-		hasUnits := x.Cmp(utils.Zero()) != 0
-		priced := val.Recon.SpotPrice > 0
+		hasUnits := !val.Recon.EndBal.IsZero()
+		priced := !val.Recon.SpotPrice.IsZero()
 		if hasUnits && !priced {
-			ret += fmt.Sprintf("%s,%s,%s,%s,%f,%s\n", val.Recon.Date.String(), val.Address, val.Symbol, val.Recon.PriceSource, val.Recon.SpotPrice, val.Balance)
+			format := "%s,%s,%s,%s,%s,%s\n"
+			ret += fmt.Sprintf(
+				format,
+				val.Recon.Date(),
+				val.Address,
+				val.Symbol,
+				val.Recon.PriceSource,
+				val.Recon.SpotPrice.String(),
+				val.Balance,
+			)
 		}
 	}
 
 	ret += ExportHeader("Zero Units Priced", zeroPriced)
 	ret += "Date,Asset,Symbol,Price Source,Spot Price,Units,Usd\n"
 	for _, val := range arr {
-		var x big.Float
-		x.SetString(val.Recon.EndBal)
-		hasUnits := x.Cmp(utils.Zero()) != 0
-		priced := val.Recon.SpotPrice > 0
+		hasUnits := !val.Recon.EndBal.IsZero()
+		priced := val.Recon.SpotPrice.GreaterThan(base.ZeroFloat)
 		if !hasUnits && priced {
-			ret += fmt.Sprintf("%s,%s,%s,%s,%f,%s\n", val.Recon.Date.String(), val.Address, val.Symbol, val.Recon.PriceSource, val.Recon.SpotPrice, val.Balance)
+			format := "%s,%s,%s,%s,%s,%s\n"
+			ret += fmt.Sprintf(
+				format,
+				val.Recon.Date(),
+				val.Address,
+				val.Symbol,
+				val.Recon.PriceSource,
+				val.Recon.SpotPrice.String(),
+				val.Balance,
+			)
 		}
 	}
 
 	ret += ExportHeader("Zero Units Unpriced", zeroNotPriced)
 	ret += "Date,Asset,Symbol,Price Source,Spot Price,Units,Usd\n"
 	for _, val := range arr {
-		var x big.Float
-		x.SetString(val.Recon.EndBal)
-		hasUnits := x.Cmp(utils.Zero()) != 0
-		priced := val.Recon.SpotPrice > 0
+		hasUnits := !val.Recon.EndBal.IsZero()
+		priced := !val.Recon.SpotPrice.IsZero()
 		if !hasUnits && !priced {
-			ret += fmt.Sprintf("%s,%s,%s,%s,%f,%s\n", val.Recon.Date.String(), val.Address, val.Symbol, val.Recon.PriceSource, val.Recon.SpotPrice, val.Balance)
+			format := "%s,%s,%s,%s,%s,%s\n"
+			ret += fmt.Sprintf(
+				format,
+				val.Recon.Date(),
+				val.Address,
+				val.Symbol,
+				val.Recon.PriceSource,
+				val.Recon.SpotPrice.String(),
+				val.Balance,
+			)
 		}
 	}
 

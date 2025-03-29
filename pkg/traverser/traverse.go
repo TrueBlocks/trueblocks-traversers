@@ -1,8 +1,11 @@
 package traverser
 
 import (
+	"errors"
 	"log"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
@@ -11,10 +14,13 @@ import (
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/logger"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/names"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
 )
 
-type Traverser[T mytypes.RawType] interface {
+type Traversable interface {
+	float64 | int64 | *types.Statement | *types.Log
+}
+
+type Traverser[T Traversable] interface {
 	Traverse(t T)
 	GetKey(t T) string
 	Result() string
@@ -26,12 +32,13 @@ type Options struct {
 	Period      string
 	Denom       string
 	Verbose     int
-	AddrFilters map[mytypes.Address]bool
-	DateFilters []mytypes.DateTime
+	AddrFilters map[base.Address]bool
+	DateFilters []base.DateTime
 	Names       map[base.Address]types.Name
+	Accounts    map[base.Address]types.Name
 }
 
-func GetOptions(addressFn, filterFn string) Options {
+func GetOptions() Options {
 	ret := Options{}
 	if len(os.Args) > 1 {
 		for i, a := range os.Args {
@@ -42,7 +49,7 @@ func GetOptions(addressFn, filterFn string) Options {
 					ret.Verbose++
 				} else if a == "units" || a == "usd" || a == "wei" {
 					ret.Denom = a
-				} else if mytypes.IsValidPeriod(a) {
+				} else if base.IsValidPeriod(a) {
 					ret.Period = a
 				}
 			}
@@ -52,10 +59,17 @@ func GetOptions(addressFn, filterFn string) Options {
 	ret.Names, _ = names.LoadNamesMap("mainnet", types.Regular|types.Custom|types.Prefund, []string{})
 	ret.Names[base.HexToAddress("0x")] = types.Name{Name: "Creation/Mint"}
 	log.Println(colors.Yellow+"Loaded", len(ret.Names), "names...", colors.Off)
+	ret.Accounts = make(map[base.Address]types.Name)
 
+	rootFolder, _ := os.Getwd()
+	addressFn := filepath.Join(rootFolder, "addresses.csv")
+	if !file.FileExists(addressFn) {
+		log.Println(Usage("{0} not found.", addressFn))
+		os.Exit(0)
+	}
 	lines := file.AsciiFileToLines(addressFn)
 	for _, line := range lines {
-		if len(line) > 0 {
+		if !strings.HasPrefix(line, "#") && len(line) > 0 {
 			parts := strings.Split(line, ",")
 			if len(parts) > 2 {
 				name := types.Name{}
@@ -66,17 +80,21 @@ func GetOptions(addressFn, filterFn string) Options {
 					name.IsCustom = true
 				}
 				ret.Names[name.Address] = name
-				// log.Println(len(ret.Names), name)
-				// log.Println()
+				ret.Accounts[name.Address] = name
 			}
 		}
 	}
 	log.Println(colors.Yellow+"Loaded", len(lines), "addresses...", colors.Off)
 
+	filterFn := filepath.Join(rootFolder, "filters.csv")
+	if !file.FileExists(filterFn) {
+		log.Println(Usage("{0} not found.", filterFn))
+		os.Exit(0)
+	}
 	lines = file.AsciiFileToLines(filterFn)
 	if len(lines) > 0 {
-		ret.AddrFilters = make(map[mytypes.Address]bool)
-		ret.DateFilters = make([]mytypes.DateTime, 0, 2)
+		ret.AddrFilters = make(map[base.Address]bool)
+		ret.DateFilters = make([]base.DateTime, 0, 2)
 		for _, line := range lines {
 			if strings.HasPrefix(line, "#") {
 				continue
@@ -86,7 +104,7 @@ func GetOptions(addressFn, filterFn string) Options {
 					log.Fatal("Invalid filter line: ", line)
 					os.Exit(1)
 				}
-				ret.AddrFilters[mytypes.Address(parts[0])] = true
+				ret.AddrFilters[base.HexToAddress(parts[0])] = true
 			} else if strings.HasSuffix(line, "Date") {
 				if len(ret.DateFilters) == 2 {
 					logger.Fatal("At most two date filters are allowed:", line)
@@ -96,7 +114,7 @@ func GetOptions(addressFn, filterFn string) Options {
 					log.Fatal("Invalid filter line: ", line)
 					os.Exit(1)
 				}
-				dt := mytypes.DateTime{}
+				dt := base.DateTime{}
 				if err := dt.UnmarshalCSV(parts[0]); err != nil {
 					logger.Fatal("invalid date filter:", line, err)
 				}
@@ -110,4 +128,13 @@ func GetOptions(addressFn, filterFn string) Options {
 	log.Println(colors.Yellow+"Loaded", len(ret.DateFilters), "date filters...", colors.Off)
 
 	return ret
+}
+
+func Usage(msg string, values ...string) error {
+	ret := msg
+	for index, val := range values {
+		rep := "{" + strconv.FormatInt(int64(index), 10) + "}"
+		ret = strings.Replace(ret, rep, val, -1)
+	}
+	return errors.New(ret)
 }

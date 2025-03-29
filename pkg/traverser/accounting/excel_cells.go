@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 func (c *Excel) SetCell(sheetName string, row int, sumRange CellRange, field *Field, val interface{}) string {
@@ -48,37 +46,55 @@ func (c *Excel) SetCell(sheetName string, row int, sumRange CellRange, field *Fi
 		}
 		err = c.ExcelFile.SetCellFormula(sheetName, cell, f)
 	case "float2":
-		err = c.ExcelFile.SetCellFloat(sheetName, cell, val.(float64), 2, 64)
+		switch v := val.(type) {
+		case float64:
+			err = c.ExcelFile.SetCellFloat(sheetName, cell, v, 2, 64)
+		case base.Float:
+			err = c.ExcelFile.SetCellFloat(sheetName, cell, v.Float64(), 2, 64)
+		}
 	case "float5":
-		err = c.ExcelFile.SetCellFloat(sheetName, cell, val.(float64), 5, 64)
+		switch v := val.(type) {
+		case float64:
+			err = c.ExcelFile.SetCellFloat(sheetName, cell, v, 5, 64)
+		case base.Float:
+			err = c.ExcelFile.SetCellFloat(sheetName, cell, v.Float64(), 5, 64)
+		}
 	case "bool":
 		err = c.ExcelFile.SetCellBool(sheetName, cell, val.(bool))
 	case "big":
-		v := val.(string)
-		var x big.Float
-		x.SetString(v)
-		f, _ := x.Float64()
-		// log.Fatal(v, f)
-		err = c.ExcelFile.SetCellFloat(sheetName, cell, f, 18, 64)
+		switch v := val.(type) {
+		case string:
+			var x big.Float
+			x.SetString(v)
+			f, _ := x.Float64()
+			err = c.ExcelFile.SetCellFloat(sheetName, cell, f, 18, 64)
+		case base.Wei:
+			s := v.Text(10)
+			var x big.Float
+			x.SetString(s)
+			f, _ := x.Float64()
+			err = c.ExcelFile.SetCellFloat(sheetName, cell, f, 18, 64)
+		}
 	case "date":
-		v := val.(mytypes.DateTime)
+		v := val.(base.DateTime)
 		tt := time.Date(v.Year(), v.Month(), v.Day(), v.Hour(), v.Minute(), v.Second(), v.Nanosecond(), v.Location())
 		err = c.ExcelFile.SetCellValue(sheetName, cell, tt)
 	case "address":
-		a := val.(mytypes.Address)
+		a := val.(base.Address)
 		n := c.Opts.Names[base.HexToAddress(a.String())].Name
 		if len(n) > 0 {
 			if len(n) > 10 {
 				n = n[0:10]
 			}
-			n = n + "-" + a.String()[0:6]
+			n = n + "-" + a.String()[0:min(6, len(a.String()))]
 		} else {
 			n = a.String()
 		}
 		err = c.ExcelFile.SetCellStr(sheetName, cell, n)
 	case "hash":
-		a := val.(common.Hash)
-		err = c.ExcelFile.SetCellStr(sheetName, cell, a.String())
+		a := val.(base.Hash)
+		s := a.String()
+		err = c.ExcelFile.SetCellStr(sheetName, cell, s)
 	case "string":
 		var s string
 		if len(field.Formula) > 0 {

@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
@@ -16,7 +16,7 @@ type ExtractLog struct {
 	// w     *tabwriter.Writer
 }
 
-func (c *ExtractLog) Traverse(l *mytypes.RawLog) {
+func (c *ExtractLog) Traverse(l *types.Log) {
 	if c.Count == 0 {
 		// c.w = tabwriter.NewWriter(os.Stdout, 0, 0, 1, ',', 0)
 		c.ReportHeader(c.Opts.Verbose, l)
@@ -25,7 +25,7 @@ func (c *ExtractLog) Traverse(l *mytypes.RawLog) {
 	c.Count++
 }
 
-func (c *ExtractLog) GetKey(r *mytypes.RawLog) string {
+func (c *ExtractLog) GetKey(r *types.Log) string {
 	return ""
 }
 
@@ -37,19 +37,19 @@ func (a *ExtractLog) Name() string {
 	return colors.Green + reflect.TypeOf(a).Elem().String() + colors.Off + ": " + fmt.Sprintf("%d", a.Count)
 }
 
-func (c *ExtractLog) Sort(array []*mytypes.RawLog) {
+func (c *ExtractLog) Sort(array []*types.Log) {
 	// Nothing to do
 }
 
-func (c *ExtractLog) ReportHeader(verbose int, r *mytypes.RawLog) {
+func (c *ExtractLog) ReportHeader(verbose int, r *types.Log) {
 	if verbose > 0 {
 		fmt.Println("Block\tTx\tLog\tAddress\tTopics\tData\t")
 	}
 }
 
-func (c *ExtractLog) ReportRecord(r *mytypes.RawLog) {
+func (c *ExtractLog) ReportRecord(r *types.Log) {
 	// if c.Count%20 == 0 {
 	// 	c.w.Flush()
 	// }
-	fmt.Printf("%s\t%s\t%s\t%s\t%s\n", r.BlockNumber, r.TransactionIndex, r.LogIndex, r.Address, r.CompressedLog)
+	fmt.Printf("%d\t%d\t%d\t%s\t%s\n", r.BlockNumber, r.TransactionIndex, r.LogIndex, r.Address.Hex(), r.CompressedLog())
 }

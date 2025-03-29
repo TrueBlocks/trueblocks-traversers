@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
@@ -17,15 +17,15 @@ type CountByFunction struct {
 	Values map[string]uint64
 }
 
-func (c *CountByFunction) Traverse(r *mytypes.RawReconciliation) {
+func (c *CountByFunction) Traverse(r *types.Statement) {
 	if len(c.Values) == 0 {
 		c.Values = make(map[string]uint64)
 	}
 	c.Values[c.GetKey(r)]++
 }
 
-func (c *CountByFunction) GetKey(r *mytypes.RawReconciliation) string {
-	return r.Encoding + "_" + strings.Split(strings.Replace(strings.Replace(r.Signature, "{name:", "", -1), "}", "", -1), "|")[0]
+func (c *CountByFunction) GetKey(r *types.Statement) string {
+	return r.Encoding() + "_" + strings.Split(strings.Replace(strings.Replace(r.Signature(), "{name:", "", -1), "}", "", -1), "|")[0]
 }
 
 func (c *CountByFunction) Result() string {
@@ -36,7 +36,7 @@ func (c *CountByFunction) Name() string {
 	return colors.Green + reflect.TypeOf(c).Elem().String() + colors.Off
 }
 
-func (c *CountByFunction) Sort(array []*mytypes.RawReconciliation) {
+func (c *CountByFunction) Sort(array []*types.Statement) {
 	// Nothing to do
 }
 
@@ -56,14 +56,16 @@ func (c *CountByFunction) reportValues(msg string, m map[string]uint64) string {
 	for k, v := range m {
 		parts := strings.Split(k, "_")
 		status := "unnamed"
-		if len(parts[1]) > 0 && parts[0] != parts[1] {
-			if strings.HasPrefix(parts[1], "message:") {
-				status = "message"
-			} else {
-				status = "named"
+		if len(parts) > 1 {
+			if len(parts[1]) > 0 && parts[0] != parts[1] {
+				if strings.HasPrefix(parts[1], "message:") {
+					status = "message"
+				} else {
+					status = "named"
+				}
 			}
+			arr = append(arr, stats{Count: v, Encoding: parts[0], Name: parts[1], Status: status})
 		}
-		arr = append(arr, stats{Count: v, Encoding: parts[0], Name: parts[1], Status: status})
 
 		nTransfers += int(v)
 		if parts[0] == "0x" {

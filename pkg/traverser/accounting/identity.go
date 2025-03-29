@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
@@ -16,7 +16,7 @@ type Identity struct {
 	Count    uint64
 }
 
-func (c *Identity) Traverse(val *mytypes.RawReconciliation) {
+func (c *Identity) Traverse(val *types.Statement) {
 	c.Count++
 	if c.NotFirst {
 		fmt.Println(",")
@@ -27,7 +27,7 @@ func (c *Identity) Traverse(val *mytypes.RawReconciliation) {
 	fmt.Println(val)
 }
 
-func (c *Identity) GetKey(r *mytypes.RawReconciliation) string {
+func (c *Identity) GetKey(r *types.Statement) string {
 	return ""
 }
 
@@ -39,6 +39,6 @@ func (a *Identity) Name() string {
 	return colors.Green + reflect.TypeOf(a).Elem().String() + colors.Off + ": " + fmt.Sprintf("%d", a.Count)
 }
 
-func (c *Identity) Sort(array []*mytypes.RawReconciliation) {
+func (c *Identity) Sort(array []*types.Statement) {
 	// Nothing to do
 }

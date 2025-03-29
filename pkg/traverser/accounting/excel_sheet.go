@@ -1,8 +1,6 @@
 package accounting
 
-import (
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
-)
+import "github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 
 type AssetSheet struct {
 	Name      string
@@ -11,15 +9,15 @@ type AssetSheet struct {
 	Symbol    string
 	Decimals  int
 	nRecords  int
-	Records   []*mytypes.RawReconciliation
+	Records   []*types.Statement
 }
 
 func (sheet *AssetSheet) monthSwitches(txIndex int) bool {
 	if txIndex == 0 {
 		return false
 	}
-	pMonth := sheet.Records[txIndex-1].Date.Format("2006-01")
-	cMonth := sheet.Records[txIndex].Date.Format("2006-01")
+	pMonth := sheet.Records[txIndex-1].DateTime().Format("2006-01")
+	cMonth := sheet.Records[txIndex].DateTime().Format("2006-01")
 	return pMonth != cMonth
 }
 
@@ -27,7 +25,7 @@ func (sheet *AssetSheet) yearSwitches(txIndex int) bool {
 	if txIndex == 0 {
 		return false
 	}
-	pYear := sheet.Records[txIndex-1].Date.Format("2006")
-	cYear := sheet.Records[txIndex].Date.Format("2006")
+	pYear := sheet.Records[txIndex-1].DateTime().Format("2006")
+	cYear := sheet.Records[txIndex].DateTime().Format("2006")
 	return pYear != cYear
 }

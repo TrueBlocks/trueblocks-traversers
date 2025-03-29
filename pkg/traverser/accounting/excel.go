@@ -10,8 +10,8 @@ import (
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/base"
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/excel"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 	"github.com/xuri/excelize/v2"
 )
@@ -20,68 +20,72 @@ type Excel struct {
 	Opts      traverser.Options
 	ExcelFile *excelize.File
 	Line      int
-	Assets    map[string][]*mytypes.RawReconciliation
+	Assets    map[string][]*types.Statement
 	showOnce  map[string]bool
 }
 
 // --------------------------------
-func (c *Excel) Traverse(r *mytypes.RawReconciliation) {
+func (c *Excel) Traverse(r *types.Statement) {
 	if c.ExcelFile == nil {
 		c.ExcelFile = excel.NewWorkbook("Summary", []string{"This is the summary text"})
-		c.Assets = make(map[string][]*mytypes.RawReconciliation)
+		c.Assets = make(map[string][]*types.Statement)
 		c.showOnce = make(map[string]bool)
 	}
 
-	passedAddrFilter := c.Opts.AddrFilters[r.AssetAddress]
+	passedAddrFilter := c.Opts.AddrFilters[r.Asset]
 	if len(c.Opts.AddrFilters) > 0 && !passedAddrFilter {
-		if !c.showOnce[r.AssetAddress.String()] {
-			fmt.Println("Skipping asset", r.AssetAddress.String())
+		if !c.showOnce[r.Asset.String()] {
+			fmt.Printf("Skipping asset: %s\r", r.Asset.String())
 		}
-		c.showOnce[r.AssetAddress.String()] = true
+		c.showOnce[r.Asset.String()] = true
 		return
 	}
 
 	l := 0 // len(c.Opts.DateFilters)
 	if l > 0 {
-		firstDate := mytypes.NewDateTime2(2015, 7, 30, 23, 59, 59)
+		firstDate := base.NewDateTime(2015, 7, 30, 23, 59, 59)
 		lastDate := c.Opts.DateFilters[0]
 		if l > 1 {
 			firstDate = c.Opts.DateFilters[0]
 			lastDate = c.Opts.DateFilters[1]
 		}
-		if r.Date.Before(&firstDate) || r.Date.After(&lastDate) {
-			month := r.Date.String()[:7]
+		dt := r.DateTime()
+		if dt.Before(&firstDate) || dt.After(&lastDate) {
+			month := dt.String()[:7]
 			if !c.showOnce[month] {
-				fmt.Println("Skipping month", month)
+				fmt.Printf("Skipping month: %s\r", month)
 			}
 			c.showOnce[month] = true
 			return
 		}
 	}
+	// fmt.Println("")
 
 	c.Line += 1
 	c.Assets[c.GetKey(r)] = append(c.Assets[c.GetKey(r)], r)
 }
 
-func (c *Excel) GetKey(r *mytypes.RawReconciliation) string {
-	return fmt.Sprintf("%s-%s-%d", r.AssetAddress.String(), r.AssetSymbol, r.Decimals)
+func (c *Excel) GetKey(r *types.Statement) string {
+	return fmt.Sprintf("%s-%s-%d", r.Asset.String(), r.Symbol, r.Decimals)
 }
 
 func (c *Excel) Name() string {
 	return colors.Green + reflect.TypeOf(c).Elem().String() + colors.Off
 }
 
-func (c *Excel) Sort(array []*mytypes.RawReconciliation) {
+func (c *Excel) Sort(array []*types.Statement) {
 	sort.Slice(array, func(i, j int) bool {
 		item1 := array[i]
 		item2 := array[j]
-		if item1.Date == item2.Date {
+		dt1 := item1.DateTime()
+		dt2 := item2.DateTime()
+		if dt1 == dt2 {
 			if item1.TransactionIndex == item2.TransactionIndex {
 				return item1.LogIndex < item2.LogIndex
 			}
 			return item1.TransactionIndex < item2.TransactionIndex
 		}
-		return item1.Date.Before(&item2.Date)
+		return dt1.Before(&dt2)
 	})
 }
 
@@ -97,7 +101,7 @@ type Field struct {
 const headerRow = 6
 
 type CellRange struct {
-	pDate   mytypes.DateTime
+	pDate   base.DateTime
 	A       int
 	B       int
 	Rows    []int
@@ -226,26 +230,33 @@ func (c *Excel) Result() string {
 		lastRowType := ""
 		curRow := headerRow
 		for txIndex, r := range sheet.Records {
-			sig := r.Signature
+			sig := r.Signature()
 			if sig == "" {
-				sig = r.Encoding
+				sig = r.Encoding()
 			} else {
 				parts := strings.Split(sig, "|")
 				sig = strings.Replace(strings.Replace(parts[0], "{name:", "", -1), "}", "", -1)
 			}
 
-			toUnits := func(v string, decimals int) float64 {
+			toUnits := func(v string) float64 {
 				var x big.Float
 				x.SetString(v)
 				val, _ := ToUnits(&x, r.Decimals).Float64()
 				return val
 			}
 
-			begUnits := toUnits(r.BegBal, int(r.Decimals))
-			inUnits := toUnits(r.TotalIn, int(r.Decimals))
-			outUnitsLessGas := toUnits(r.TotalOutLessGas, int(r.Decimals))
-			gasUnitsOut := toUnits(r.GasOut, int(r.Decimals))
-			endUnits := toUnits(r.EndBal, int(r.Decimals))
+			dt := r.DateTime()
+			begUnits := toUnits(r.BegBal.Text(10))
+			inUnits := toUnits(r.TotalIn().Text(10))
+			outUnitsLessGas := toUnits(r.TotalOutLessGas().Text(10))
+			gasUnitsOut := toUnits(r.GasOut.Text(10))
+			endUnits := toUnits(r.EndBal.Text(10))
+			sp := r.SpotPrice.Float64()
+			begUsd := sp * begUnits
+			inUsd := sp * inUnits
+			outLessGasUsd := sp * outUnitsLessGas
+			gasUsd := sp * gasUnitsOut
+			endUsd := sp * endUnits
 
 			if sheet.monthSwitches(txIndex) {
 				if lastRowType == "Tx" || lastRowType == "" {
@@ -301,16 +312,16 @@ func (c *Excel) Result() string {
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Bn"], int(r.BlockNumber))
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["TxId"], int(r.TransactionIndex))
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["LogId"], int(r.LogIndex))
-				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Year"], r.Date.EndOfYear())
-				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Month"], r.Date.EndOfMonth())
-				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Date"], r.Date)
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Year"], dt.EndOfYear())
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Month"], dt.EndOfMonth())
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Date"], dt)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["PrevUsd"], "")
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["ChangeUsd"], "")
-				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["BegUsd"], r.SpotPrice*begUnits)
-				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["InUsd"], r.SpotPrice*inUnits)
-				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["OutUsd"], r.SpotPrice*outUnitsLessGas)
-				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["GasUsd"], r.SpotPrice*gasUnitsOut)
-				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["EndUsd"], r.SpotPrice*endUnits)
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["BegUsd"], begUsd)
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["InUsd"], inUsd)
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["OutUsd"], outLessGasUsd)
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["GasUsd"], gasUsd)
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["EndUsd"], endUsd)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Spot"], r.SpotPrice)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Source"], r.PriceSource)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["BegUnits"], begUnits)
@@ -319,13 +330,13 @@ func (c *Excel) Result() string {
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["GasUnits"], gasUnitsOut)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["EndUnits"], endUnits)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["BegBal"], r.BegBal)
-				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Inflow"], r.TotalIn)
-				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Outflow"], r.TotalOutLessGas)
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Inflow"], r.TotalIn())
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Outflow"], r.TotalOutLessGas())
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["GasOut"], r.GasOut)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["EndBal"], r.EndBal)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Check"], "check")
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Message"], sig)
-				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["ReconType"], r.ReconciliationType)
+				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["ReconType"], r.ReconciliationType())
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Sender"], r.Sender)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["Recipient"], r.Recipient)
 				c.SetCell(sheet.Name, curRow, rowRange, fieldMap["AccountedFor"], r.AccountedFor)
@@ -363,9 +374,9 @@ func (c *Excel) Result() string {
 			}
 
 			bottomRow = curRow
-			// prevEnd = r.SpotPrice * endUnits
-			monthRange.pDate = r.Date
-			yearRange.pDate = r.Date
+			// prevEnd := r.SpotPrice.Mul(&r.SpotPrice, base.NewFloat(endUnits))
+			monthRange.pDate = dt
+			yearRange.pDate = dt
 		}
 
 		if lastRowType == "Tx" || lastRowType == "" {
@@ -484,22 +495,22 @@ func (c *Excel) Result() string {
 func (c *Excel) assetsToSheets() []AssetSheet {
 	sheets := make([]AssetSheet, 0, len(c.Assets))
 	for _, asset := range c.Assets {
-		sheetName := asset[0].AssetAddress.String()[:8]
-		if !strings.HasPrefix(asset[0].AssetSymbol, "0x") {
-			sym := strings.ReplaceAll(asset[0].AssetSymbol, " ", "_")
+		sheetName := asset[0].Asset.String()[:8]
+		if !strings.HasPrefix(asset[0].Symbol, "0x") {
+			sym := strings.ReplaceAll(asset[0].Symbol, " ", "_")
 			if len(sym) > 10 {
 				sym = sym[:10]
 			}
 			sheetName = sym + "_" + sheetName
 		} else {
-			sheetName = asset[0].AssetAddress.String()[:12]
+			sheetName = asset[0].Asset.String()[:12]
 		}
 		sheetName += "_" + fmt.Sprintf("%d", len(asset))
-		addr := asset[0].AssetAddress
+		addr := asset[0].Asset
 		s := AssetSheet{
 			Name:     sheetName + fmt.Sprintf(" (%d)", len(asset)),
 			Address:  addr.String(),
-			Symbol:   asset[0].AssetSymbol,
+			Symbol:   asset[0].Symbol,
 			Decimals: int(asset[0].Decimals),
 			nRecords: len(asset),
 			Records:  asset,
@@ -528,10 +539,10 @@ func (c *Excel) assetsToSheets() []AssetSheet {
 
 	for i := 0; i < len(sheets); i++ {
 		records := sheets[i].Records[0]
-		if !strings.HasPrefix(records.AssetSymbol, "0x") {
-			sheets[i].RangeName = "t_" + cleanup(records.AssetSymbol) + "_" + records.AssetAddress.String()[:8]
+		if !strings.HasPrefix(records.Symbol, "0x") {
+			sheets[i].RangeName = "t_" + cleanup(records.Symbol) + "_" + records.Asset.String()[:8]
 		} else {
-			sheets[i].RangeName = "t_" + records.AssetAddress.String()[:12]
+			sheets[i].RangeName = "t_" + records.Asset.String()[:12]
 		}
 		// fmt.Println(sheets[i].RangeName)
 	}

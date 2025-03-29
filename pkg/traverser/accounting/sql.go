@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/colors"
-	"github.com/TrueBlocks/trueblocks-traversers/pkg/mytypes"
+	"github.com/TrueBlocks/trueblocks-core/src/apps/chifra/pkg/types"
 	"github.com/TrueBlocks/trueblocks-traversers/pkg/traverser"
 )
 
@@ -15,11 +15,11 @@ type SqlWriter struct {
 	Value uint64
 }
 
-func (c *SqlWriter) Traverse(r *mytypes.RawReconciliation) {
+func (c *SqlWriter) Traverse(r *types.Statement) {
 	// SendToSQL(connection, r)
 }
 
-func (c *SqlWriter) GetKey(r *mytypes.RawReconciliation) string {
+func (c *SqlWriter) GetKey(r *types.Statement) string {
 	return ""
 }
 
