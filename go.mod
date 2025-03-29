@@ -7,7 +7,7 @@ replace github.com/TrueBlocks/trueblocks-sdk/v4 => /Users/jrush/Development/true
 replace github.com/TrueBlocks/trueblocks-core => /Users/jrush/Development/trueblocks-core
 
 require (
-	github.com/TrueBlocks/trueblocks-core/src/apps/chifra v0.0.0-20250329011249-9faa29fe970f
+	github.com/TrueBlocks/trueblocks-core/src/apps/chifra v0.0.0-20250329030015-9809f33df588
 	github.com/TrueBlocks/trueblocks-sdk/v5 v5.0.0
 	github.com/go-test/deep v1.1.1
 	github.com/xuri/excelize/v2 v2.9.0
