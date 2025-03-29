@@ -1,3 +1,4 @@
+*.err
 .DS_Store
 file
 launch.json
